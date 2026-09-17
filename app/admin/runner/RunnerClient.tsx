@@ -33,6 +33,13 @@ export default function RunnerClient() {
   const [limit,      setLimit]      = useState<string>('');
   const [rescore,    setRescore]    = useState(false);
 
+  // Scrape-specific state
+  const [nicheCities,    setNicheCities]    = useState<string[]>([]);
+  const [nicheTerms,     setNicheTerms]     = useState<string[]>([]);
+  const [selCities,      setSelCities]      = useState<string[]>([]);
+  const [selTerms,       setSelTerms]       = useState<string[]>([]);
+  const [maxPerQuery,    setMaxPerQuery]    = useState<string>('');
+
   // Active job log
   const [activeJob,  setActiveJob]  = useState<string | null>(null);
   const [logLines,   setLogLines]   = useState<string[]>([]);
@@ -45,6 +52,22 @@ export default function RunnerClient() {
     const t = setInterval(checkConnection, 5000);
     return () => clearInterval(t);
   }, []);
+
+  // Load niche config when scrape is selected or niche changes
+  useEffect(() => {
+    if (selScript !== 'scrape' || !connected) return;
+    fetch(`${LOCAL}/config/niche/${selNiche}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const cities: string[] = data?.scrape?.cities ?? [];
+        const terms:  string[] = data?.scrape?.terms  ?? [];
+        setNicheCities(cities);
+        setNicheTerms(terms);
+        setSelCities(cities);
+        setSelTerms(terms);
+      })
+      .catch(() => {});
+  }, [selScript, selNiche, connected]);
 
   // Auto-scroll logs
   useEffect(() => {
@@ -80,6 +103,13 @@ export default function RunnerClient() {
       if (tier)   body.tier   = tier;
       if (limit)  body.limit  = Number(limit);
       if (rescore) body.rescore = true;
+      if (selScript === 'scrape') {
+        if (selCities.length && selCities.length < nicheCities.length)
+          body.cities = selCities.join(',');
+        if (selTerms.length && selTerms.length < nicheTerms.length)
+          body.terms = selTerms.join(',');
+        if (maxPerQuery) body.max_per_query = Number(maxPerQuery);
+      }
 
       const r = await fetch(`${LOCAL}/run`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -116,9 +146,17 @@ export default function RunnerClient() {
     setJobStatus('killed');
   }
 
-  const needsNiche = selScript !== 'notify' && selScript !== 'billing';
-  const needsPhase = selScript === 'outreach';
+  const needsNiche  = selScript !== 'notify' && selScript !== 'billing';
+  const needsPhase  = selScript === 'outreach';
   const showRescore = selScript === 'score';
+  const isScrape    = selScript === 'scrape';
+
+  function toggleCity(city: string) {
+    setSelCities(prev => prev.includes(city) ? prev.filter(c => c !== city) : [...prev, city]);
+  }
+  function toggleTerm(term: string) {
+    setSelTerms(prev => prev.includes(term) ? prev.filter(t => t !== term) : [...prev, term]);
+  }
 
   const inputStyle: React.CSSProperties = {
     background: '#1e1b16', border: '1px solid rgba(197,163,104,0.15)',
@@ -207,10 +245,18 @@ export default function RunnerClient() {
             </div>
           )}
 
+          {isScrape && (
+            <div>
+              <label style={{ display: 'block', fontSize: '0.65rem', color: '#555', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}>Máx por query</label>
+              <input type="number" value={maxPerQuery} onChange={e => setMaxPerQuery(e.target.value)}
+                placeholder="ilimitado" style={{ ...inputStyle, width: '110px' }} />
+            </div>
+          )}
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingBottom: '0.15rem' }}>
             <label style={checkRow}>
               <input type="checkbox" checked={dryRun} onChange={e => setDryRun(e.target.checked)} />
-              Dry-run (sem enviar)
+              Dry-run (sem salvar)
             </label>
             {showRescore && (
               <label style={checkRow}>
@@ -242,6 +288,53 @@ export default function RunnerClient() {
           </div>
         </div>
       </div>
+
+      {/* Scrape: cities + terms selectors */}
+      {isScrape && nicheCities.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          {/* Cities */}
+          <div style={{ background: '#161310', border: '1px solid rgba(197,163,104,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ padding: '0.6rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#8a7f72', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Cidades ({selCities.length}/{nicheCities.length})
+              </span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button onClick={() => setSelCities(nicheCities)} style={{ background: 'none', border: 'none', color: '#555', fontSize: '0.65rem', cursor: 'pointer' }}>todas</button>
+                <button onClick={() => setSelCities([])} style={{ background: 'none', border: 'none', color: '#555', fontSize: '0.65rem', cursor: 'pointer' }}>nenhuma</button>
+              </div>
+            </div>
+            <div style={{ padding: '0.6rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', maxHeight: '200px', overflowY: 'auto' }}>
+              {nicheCities.map(city => (
+                <label key={city} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: selCities.includes(city) ? '#d8d2c4' : '#444', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={selCities.includes(city)} onChange={() => toggleCity(city)} />
+                  {city}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Terms */}
+          <div style={{ background: '#161310', border: '1px solid rgba(197,163,104,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ padding: '0.6rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#8a7f72', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Termos ({selTerms.length}/{nicheTerms.length})
+              </span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button onClick={() => setSelTerms(nicheTerms)} style={{ background: 'none', border: 'none', color: '#555', fontSize: '0.65rem', cursor: 'pointer' }}>todos</button>
+                <button onClick={() => setSelTerms([])} style={{ background: 'none', border: 'none', color: '#555', fontSize: '0.65rem', cursor: 'pointer' }}>nenhum</button>
+              </div>
+            </div>
+            <div style={{ padding: '0.6rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', maxHeight: '200px', overflowY: 'auto' }}>
+              {nicheTerms.map(term => (
+                <label key={term} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: selTerms.includes(term) ? '#d8d2c4' : '#444', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={selTerms.includes(term)} onChange={() => toggleTerm(term)} />
+                  {term}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Live log terminal */}
       {logLines.length > 0 && (
