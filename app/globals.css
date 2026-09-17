@@ -82,6 +82,22 @@ body {
   border-bottom: none;
 }
 
+/* Admin nav links */
+.admin-nav-link {
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  color: #aaa;
+  font-size: 0.82rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.admin-nav-link:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e8e8e8;
+}
+
 /* Callout box */
 .callout {
   background: rgba(197, 163, 104, 0.07);
