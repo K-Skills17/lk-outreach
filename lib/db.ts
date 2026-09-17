@@ -1,10 +1,10 @@
 import { neon } from '@neondatabase/serverless';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL environment variable is not set.');
-}
-
-// HTTP-based connection — safe for serverless / Vercel Edge
-const sql = neon(process.env.DATABASE_URL);
+// neon() is lazy — it only makes network calls when a query is executed,
+// so instantiating with a placeholder at build time is safe.
+// Set DATABASE_URL in Vercel project settings for the connection to work at runtime.
+const sql = neon(
+  process.env.DATABASE_URL ?? 'postgresql://build:placeholder@localhost/neondb',
+);
 
 export default sql;
