@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 const LOCAL = 'http://localhost:8765';
 
 type SendWindow = { start: string; end: string };
-type NumberCfg  = { id: string; label: string; daily_cap_start: number; daily_cap_max: number; status: string; warming: boolean };
+type NumberCfg  = { id: string; label: string; phone: string; daily_cap_start: number; daily_cap_max: number; status: string; warming: boolean };
 type SenderCfg  = {
   numbers:      NumberCfg[];
   daily:        { total_cap: number; reset_hour: string };
@@ -144,10 +144,14 @@ export default function ConfigClient() {
         <div style={sectionHead}>Números WhatsApp</div>
         <div style={{ padding: '0.85rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           {cfg.numbers.map((n, i) => (
-            <div key={n.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 90px 90px auto', gap: '0.65rem', alignItems: 'center' }}>
+            <div key={n.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 80px 80px auto', gap: '0.65rem', alignItems: 'center' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.62rem', color: '#555', marginBottom: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Label</label>
                 <input value={n.label} onChange={e => updateNumber(i, { label: e.target.value })} style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.62rem', color: '#555', marginBottom: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Número (E.164)</label>
+                <input value={n.phone ?? ''} onChange={e => updateNumber(i, { phone: e.target.value })} placeholder="5511999999999" style={inputStyle} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.62rem', color: '#555', marginBottom: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</label>
