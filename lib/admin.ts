@@ -228,3 +228,68 @@ export async function updateProspect(
 
   return true;
 }
+
+// ---------------------------------------------------------------------------
+// Billing
+// ---------------------------------------------------------------------------
+
+export type BillingTenantRow = {
+  id:                       string;
+  name:                     string;
+  slug:                     string;
+  dashboard_token:          string;
+  owner_name:               string | null;
+  owner_phone:              string | null;
+  go_live_at:               string | null;
+  monthly_status:           string;
+  bot_enabled:              boolean;
+  price_brl:                number | null;
+  billing_reminder_sent:    boolean;
+  billing_reminder_sent_at: string | null;
+  billing_cutoff_sent:      boolean;
+  billing_cutoff_sent_at:   string | null;
+};
+
+export async function getBillingTenants(): Promise<BillingTenantRow[]> {
+  const rows = await sql`
+    SELECT
+      id, name, slug, dashboard_token, owner_name, owner_phone, go_live_at,
+      monthly_status, bot_enabled, price_brl,
+      billing_reminder_sent, billing_reminder_sent_at,
+      billing_cutoff_sent,   billing_cutoff_sent_at
+    FROM tenants
+    ORDER BY go_live_at ASC NULLS LAST, created_at DESC
+  `;
+  return rows as unknown as BillingTenantRow[];
+}
+
+const ALLOWED_MONTHLY_STATUSES = new Set(['pending', 'paid', 'overdue', 'cancelled']);
+
+export async function updateTenantBilling(
+  id:    string,
+  patch: { monthly_status?: string; bot_enabled?: boolean },
+): Promise<boolean> {
+  if (patch.monthly_status && !ALLOWED_MONTHLY_STATUSES.has(patch.monthly_status)) return false;
+
+  if (patch.monthly_status !== undefined && patch.bot_enabled !== undefined) {
+    await sql`
+      UPDATE tenants
+      SET monthly_status = ${patch.monthly_status},
+          bot_enabled    = ${patch.bot_enabled},
+          updated_at     = now()
+      WHERE id = ${id}
+    `;
+  } else if (patch.monthly_status !== undefined) {
+    await sql`
+      UPDATE tenants
+      SET monthly_status = ${patch.monthly_status}, updated_at = now()
+      WHERE id = ${id}
+    `;
+  } else if (patch.bot_enabled !== undefined) {
+    await sql`
+      UPDATE tenants SET bot_enabled = ${patch.bot_enabled}, updated_at = now() WHERE id = ${id}
+    `;
+  }
+
+  return true;
+}
