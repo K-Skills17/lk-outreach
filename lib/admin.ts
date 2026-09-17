@@ -196,6 +196,17 @@ export async function getProspects(opts: {
 }
 
 // ---------------------------------------------------------------------------
+// Distinct niches
+// ---------------------------------------------------------------------------
+
+export async function getDistinctNiches(): Promise<string[]> {
+  const rows = await sql`
+    SELECT DISTINCT niche FROM prospects WHERE niche IS NOT NULL ORDER BY niche
+  `;
+  return (rows as { niche: string }[]).map(r => r.niche);
+}
+
+// ---------------------------------------------------------------------------
 // Update prospect
 // ---------------------------------------------------------------------------
 

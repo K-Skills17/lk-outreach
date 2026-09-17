@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getProspects } from '@/lib/admin';
+import { getProspects, getDistinctNiches } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,12 +73,15 @@ export default async function ProspectsPage({
   const niche  = params.niche  || '';
   const page   = Math.max(1, parseInt(params.page || '1', 10));
 
-  const { rows, total } = await getProspects({
-    tier:   tier   || undefined,
-    status: status || undefined,
-    niche:  niche  || undefined,
-    page,
-  });
+  const [{ rows, total }, niches] = await Promise.all([
+    getProspects({
+      tier:   tier   || undefined,
+      status: status || undefined,
+      niche:  niche  || undefined,
+      page,
+    }),
+    getDistinctNiches(),
+  ]);
 
   const totalPages = Math.ceil(total / 50);
 
@@ -129,6 +132,21 @@ export default async function ProspectsPage({
             </FilterLink>
           ))}
         </div>
+
+        {/* Niche */}
+        {niches.length > 0 && (
+          <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ color: '#555', fontSize: '0.7rem', marginRight: '0.2rem' }}>Nicho:</span>
+            <FilterLink href={buildUrl({ niche: '', page: '1' })} active={niche === ''}>
+              Todos
+            </FilterLink>
+            {niches.map(n => (
+              <FilterLink key={n} href={buildUrl({ niche: n, page: '1' })} active={niche === n}>
+                {n}
+              </FilterLink>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -193,11 +211,12 @@ export default async function ProspectsPage({
                   </td>
                   <td style={{ padding: '0.55rem 0.65rem', textAlign: 'center' }}>
                     {p.audit_slug ? (
-                      p.audit_viewed_at ? (
-                        <span style={{ color: '#4caf7d', fontSize: '0.72rem' }}>Viu</span>
-                      ) : (
-                        <span style={{ color: '#555', fontSize: '0.72rem' }}>Enviado</span>
-                      )
+                      <a href={`https://lk-outreach.vercel.app/d/${p.audit_slug}`} target="_blank" rel="noopener noreferrer" style={{
+                        color: p.audit_viewed_at ? '#4caf7d' : '#c5a368',
+                        fontSize: '0.72rem', textDecoration: 'none', fontWeight: 600,
+                      }}>
+                        {p.audit_viewed_at ? '✓ Viu' : 'Ver link'}
+                      </a>
                     ) : '—'}
                   </td>
                   <td style={{ padding: '0.55rem 0.65rem', color: '#888', whiteSpace: 'nowrap' }}>

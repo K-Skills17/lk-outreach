@@ -106,7 +106,7 @@ export default async function AdminDashboard() {
 
   const activeContacts = s.contacted + s.in_followup + s.replied + s.call_booked;
   const viewRate       = pct(s.audit_views, s.audit_sent);
-  const replyRate      = pct(s.replied,     s.total_sent > 0 ? s.audit_sent : 0);
+  const replyRate      = pct(s.replied,     s.total_sent);
 
   return (
     <>
