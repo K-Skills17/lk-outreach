@@ -55,7 +55,8 @@ export default function RunnerClient() {
 
   // Load niche config when scrape is selected or niche changes
   useEffect(() => {
-    if (selScript !== 'scrape' || !connected) return;
+    if (selScript !== 'scrape') return;
+    if (!connected) { setNicheCities([]); setNicheTerms([]); return; }
     fetch(`${LOCAL}/config/niche/${selNiche}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
@@ -290,7 +291,7 @@ export default function RunnerClient() {
       </div>
 
       {/* Scrape: cities + terms selectors */}
-      {isScrape && nicheCities.length > 0 && (
+      {isScrape && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
           {/* Cities */}
           <div style={{ background: '#161310', border: '1px solid rgba(197,163,104,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
@@ -304,12 +305,17 @@ export default function RunnerClient() {
               </div>
             </div>
             <div style={{ padding: '0.6rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', maxHeight: '200px', overflowY: 'auto' }}>
-              {nicheCities.map(city => (
-                <label key={city} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: selCities.includes(city) ? '#d8d2c4' : '#444', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={selCities.includes(city)} onChange={() => toggleCity(city)} />
-                  {city}
-                </label>
-              ))}
+              {!connected
+                ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic' }}>Conecte o servidor local para carregar cidades</span>
+                : nicheCities.length === 0
+                  ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic' }}>Carregando…</span>
+                  : nicheCities.map(city => (
+                      <label key={city} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: selCities.includes(city) ? '#d8d2c4' : '#444', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={selCities.includes(city)} onChange={() => toggleCity(city)} />
+                        {city}
+                      </label>
+                    ))
+              }
             </div>
           </div>
 
@@ -325,12 +331,17 @@ export default function RunnerClient() {
               </div>
             </div>
             <div style={{ padding: '0.6rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', maxHeight: '200px', overflowY: 'auto' }}>
-              {nicheTerms.map(term => (
-                <label key={term} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: selTerms.includes(term) ? '#d8d2c4' : '#444', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={selTerms.includes(term)} onChange={() => toggleTerm(term)} />
-                  {term}
-                </label>
-              ))}
+              {!connected
+                ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic' }}>Conecte o servidor local para carregar termos</span>
+                : nicheTerms.length === 0
+                  ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic' }}>Carregando…</span>
+                  : nicheTerms.map(term => (
+                      <label key={term} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: selTerms.includes(term) ? '#d8d2c4' : '#444', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={selTerms.includes(term)} onChange={() => toggleTerm(term)} />
+                        {term}
+                      </label>
+                    ))
+              }
             </div>
           </div>
         </div>
