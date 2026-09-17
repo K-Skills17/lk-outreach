@@ -34,11 +34,11 @@ export default function RunnerClient() {
   const [rescore,    setRescore]    = useState(false);
 
   // Scrape-specific state
-  const [nicheCities,    setNicheCities]    = useState<string[]>([]);
-  const [nicheTerms,     setNicheTerms]     = useState<string[]>([]);
-  const [selCities,      setSelCities]      = useState<string[]>([]);
-  const [selTerms,       setSelTerms]       = useState<string[]>([]);
-  const [maxPerQuery,    setMaxPerQuery]    = useState<string>('');
+  const [selCities,   setSelCities]   = useState<string[]>([]);
+  const [selTerms,    setSelTerms]    = useState<string[]>([]);
+  const [cityInput,   setCityInput]   = useState('');
+  const [termInput,   setTermInput]   = useState('');
+  const [maxPerQuery, setMaxPerQuery] = useState<string>('');
 
   // Active job log
   const [activeJob,  setActiveJob]  = useState<string | null>(null);
@@ -53,19 +53,14 @@ export default function RunnerClient() {
     return () => clearInterval(t);
   }, []);
 
-  // Load niche config when scrape is selected or niche changes
+  // Load niche defaults when scrape is selected or niche changes
   useEffect(() => {
-    if (selScript !== 'scrape') return;
-    if (!connected) { setNicheCities([]); setNicheTerms([]); return; }
+    if (selScript !== 'scrape' || !connected) return;
     fetch(`${LOCAL}/config/niche/${selNiche}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        const cities: string[] = data?.scrape?.cities ?? [];
-        const terms:  string[] = data?.scrape?.terms  ?? [];
-        setNicheCities(cities);
-        setNicheTerms(terms);
-        setSelCities(cities);
-        setSelTerms(terms);
+        setSelCities(data?.scrape?.cities ?? []);
+        setSelTerms(data?.scrape?.terms  ?? []);
       })
       .catch(() => {});
   }, [selScript, selNiche, connected]);
@@ -105,11 +100,9 @@ export default function RunnerClient() {
       if (limit)  body.limit  = Number(limit);
       if (rescore) body.rescore = true;
       if (selScript === 'scrape') {
-        if (selCities.length && selCities.length < nicheCities.length)
-          body.cities = selCities.join(',');
-        if (selTerms.length && selTerms.length < nicheTerms.length)
-          body.terms = selTerms.join(',');
-        if (maxPerQuery) body.max_per_query = Number(maxPerQuery);
+        if (selCities.length) body.cities = selCities.join(',');
+        if (selTerms.length)  body.terms  = selTerms.join(',');
+        if (maxPerQuery)      body.max_per_query = Number(maxPerQuery);
       }
 
       const r = await fetch(`${LOCAL}/run`, {
@@ -152,11 +145,17 @@ export default function RunnerClient() {
   const showRescore = selScript === 'score';
   const isScrape    = selScript === 'scrape';
 
-  function toggleCity(city: string) {
-    setSelCities(prev => prev.includes(city) ? prev.filter(c => c !== city) : [...prev, city]);
+  function addTag(value: string, list: string[], setList: (v: string[]) => void, setInput: (v: string) => void) {
+    const trimmed = value.trim();
+    if (trimmed && !list.includes(trimmed)) setList([...list, trimmed]);
+    setInput('');
   }
-  function toggleTerm(term: string) {
-    setSelTerms(prev => prev.includes(term) ? prev.filter(t => t !== term) : [...prev, term]);
+  function removeTag(value: string, list: string[], setList: (v: string[]) => void) {
+    setList(list.filter(v => v !== value));
+  }
+  function handleTagKey(e: React.KeyboardEvent<HTMLInputElement>, value: string, list: string[], setList: (v: string[]) => void, setInput: (v: string) => void) {
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(value, list, setList, setInput); }
+    if (e.key === 'Backspace' && !value && list.length) { setList(list.slice(0, -1)); }
   }
 
   const inputStyle: React.CSSProperties = {
@@ -270,61 +269,46 @@ export default function RunnerClient() {
           </div>
         </div>
 
-        {/* Scrape: cities + terms — inside the panel, above the run button */}
+        {/* Scrape: cities + terms tag inputs */}
         {isScrape && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-
-            {/* Cities */}
-            <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', overflow: 'hidden' }}>
-              <div style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
-                <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#8a7f72', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Cidades — {selCities.length}/{nicheCities.length} selecionadas
-                </span>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button onClick={() => setSelCities(nicheCities)} style={{ background: 'none', border: 'none', color: '#c5a368', fontSize: '0.65rem', cursor: 'pointer' }}>todas</button>
-                  <button onClick={() => setSelCities([])} style={{ background: 'none', border: 'none', color: '#555', fontSize: '0.65rem', cursor: 'pointer' }}>nenhuma</button>
+            {(['cities', 'terms'] as const).map(field => {
+              const isCities  = field === 'cities';
+              const tags      = isCities ? selCities : selTerms;
+              const setTags   = isCities ? setSelCities : setSelTerms;
+              const inputVal  = isCities ? cityInput : termInput;
+              const setInput  = isCities ? setCityInput : setTermInput;
+              const label     = isCities ? 'Cidades' : 'Termos de busca';
+              const ph        = isCities ? 'ex: Campinas' : 'ex: ar condicionado split';
+              return (
+                <div key={field} style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#8a7f72', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      {label} — {tags.length}
+                    </span>
+                    <button onClick={() => setTags([])} style={{ background: 'none', border: 'none', color: '#555', fontSize: '0.65rem', cursor: 'pointer' }}>limpar tudo</button>
+                  </div>
+                  <div style={{ padding: '0.5rem 0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.35rem', minHeight: '40px', maxHeight: '140px', overflowY: 'auto' }}>
+                    {tags.map(tag => (
+                      <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(197,163,104,0.12)', border: '1px solid rgba(197,163,104,0.25)', borderRadius: '5px', padding: '0.15rem 0.5rem', fontSize: '0.74rem', color: '#c5a368' }}>
+                        {tag}
+                        <button onClick={() => removeTag(tag, tags, setTags)} style={{ background: 'none', border: 'none', color: '#7a6a50', cursor: 'pointer', fontSize: '0.7rem', padding: 0, lineHeight: 1 }}>✕</button>
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ padding: '0.35rem 0.75rem', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                    <input
+                      value={inputVal}
+                      onChange={e => setInput(e.target.value)}
+                      onKeyDown={e => handleTagKey(e, inputVal, tags, setTags, setInput)}
+                      onBlur={() => inputVal.trim() && addTag(inputVal, tags, setTags, setInput)}
+                      placeholder={ph + ' — Enter para adicionar'}
+                      style={{ ...inputStyle, width: '100%', fontSize: '0.76rem', padding: '0.3rem 0.5rem' }}
+                    />
+                  </div>
                 </div>
-              </div>
-              <div style={{ padding: '0.5rem 0.75rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.25rem 0.5rem', maxHeight: '180px', overflowY: 'auto' }}>
-                {!connected
-                  ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic', gridColumn: '1/-1' }}>Servidor offline — inicie o servidor local</span>
-                  : nicheCities.length === 0
-                    ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic', gridColumn: '1/-1' }}>Carregando…</span>
-                    : nicheCities.map(city => (
-                        <label key={city} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.76rem', color: selCities.includes(city) ? '#d8d2c4' : '#555', cursor: 'pointer', userSelect: 'none' }}>
-                          <input type="checkbox" checked={selCities.includes(city)} onChange={() => toggleCity(city)} style={{ accentColor: '#c5a368' }} />
-                          {city}
-                        </label>
-                      ))
-                }
-              </div>
-            </div>
-
-            {/* Terms */}
-            <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', overflow: 'hidden' }}>
-              <div style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
-                <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#8a7f72', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Termos de busca — {selTerms.length}/{nicheTerms.length} selecionados
-                </span>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button onClick={() => setSelTerms(nicheTerms)} style={{ background: 'none', border: 'none', color: '#c5a368', fontSize: '0.65rem', cursor: 'pointer' }}>todos</button>
-                  <button onClick={() => setSelTerms([])} style={{ background: 'none', border: 'none', color: '#555', fontSize: '0.65rem', cursor: 'pointer' }}>nenhum</button>
-                </div>
-              </div>
-              <div style={{ padding: '0.5rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', maxHeight: '180px', overflowY: 'auto' }}>
-                {!connected
-                  ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic' }}>Servidor offline — inicie o servidor local</span>
-                  : nicheTerms.length === 0
-                    ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic' }}>Carregando…</span>
-                    : nicheTerms.map(term => (
-                        <label key={term} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.76rem', color: selTerms.includes(term) ? '#d8d2c4' : '#555', cursor: 'pointer', userSelect: 'none' }}>
-                          <input type="checkbox" checked={selTerms.includes(term)} onChange={() => toggleTerm(term)} style={{ accentColor: '#c5a368' }} />
-                          {term}
-                        </label>
-                      ))
-                }
-              </div>
-            </div>
+              );
+            })}
           </div>
         )}
 
