@@ -9,6 +9,7 @@ type JobSummary = { id: string; script: string; niche: string; status: string; s
 const SCRIPTS = [
   { id: 'scrape',   label: 'Scrape',    desc: 'Google Maps → prospects',        color: '#4a9eff' },
   { id: 'score',    label: 'Pontuar',   desc: 'Calcular score + tier A/B/C',     color: '#c5a368' },
+  { id: 'slug',     label: 'Slugs',     desc: 'Gerar links de auditoria',        color: '#e08c2c' },
   { id: 'outreach', label: 'Outreach',  desc: 'Enviar mensagens WhatsApp',        color: '#4caf7d' },
   { id: 'notify',   label: 'Notificar', desc: 'Alertar donos de leads novos',     color: '#a06cd5' },
   { id: 'billing',  label: 'Cobrança',  desc: 'Checar D+25/D+35 e cortar bots',  color: '#e05c5c' },
