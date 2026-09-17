@@ -200,8 +200,10 @@ export default function RunnerClient() {
         ))}
       </div>
 
-      {/* Options + Run */}
-      <div style={{ background: '#161310', border: '1px solid rgba(197,163,104,0.1)', borderRadius: '12px', padding: '1rem 1.25rem' }}>
+      {/* Options panel — content changes per script */}
+      <div style={{ background: '#161310', border: '1px solid rgba(197,163,104,0.1)', borderRadius: '12px', padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+        {/* Row 1: shared controls */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.65rem', alignItems: 'flex-end' }}>
 
           {needsNiche && (
@@ -266,86 +268,88 @@ export default function RunnerClient() {
               </label>
             )}
           </div>
+        </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
-            {activeJob && jobStatus === 'running' && (
-              <button onClick={killJob} style={{
-                background: 'none', border: '1px solid rgba(224,92,92,0.3)',
-                borderRadius: '7px', padding: '0.5rem 0.85rem',
-                color: '#e05c5c', fontSize: '0.82rem', cursor: 'pointer',
-              }}>
-                Parar
-              </button>
-            )}
-            <button onClick={runScript} disabled={!connected || jobStatus === 'running'} style={{
-              background:   !connected || jobStatus === 'running' ? '#2a2520' : '#c5a368',
-              border:       'none', borderRadius: '8px', padding: '0.5rem 1.25rem',
-              color:        !connected || jobStatus === 'running' ? '#555' : '#0c0b09',
-              fontWeight:   700, fontSize: '0.85rem',
-              cursor:       !connected || jobStatus === 'running' ? 'not-allowed' : 'pointer',
-            }}>
-              {jobStatus === 'running' ? 'Executando…' : 'Executar'}
-            </button>
+        {/* Scrape: cities + terms — inside the panel, above the run button */}
+        {isScrape && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+
+            {/* Cities */}
+            <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', overflow: 'hidden' }}>
+              <div style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#8a7f72', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Cidades — {selCities.length}/{nicheCities.length} selecionadas
+                </span>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button onClick={() => setSelCities(nicheCities)} style={{ background: 'none', border: 'none', color: '#c5a368', fontSize: '0.65rem', cursor: 'pointer' }}>todas</button>
+                  <button onClick={() => setSelCities([])} style={{ background: 'none', border: 'none', color: '#555', fontSize: '0.65rem', cursor: 'pointer' }}>nenhuma</button>
+                </div>
+              </div>
+              <div style={{ padding: '0.5rem 0.75rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.25rem 0.5rem', maxHeight: '180px', overflowY: 'auto' }}>
+                {!connected
+                  ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic', gridColumn: '1/-1' }}>Servidor offline — inicie o servidor local</span>
+                  : nicheCities.length === 0
+                    ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic', gridColumn: '1/-1' }}>Carregando…</span>
+                    : nicheCities.map(city => (
+                        <label key={city} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.76rem', color: selCities.includes(city) ? '#d8d2c4' : '#555', cursor: 'pointer', userSelect: 'none' }}>
+                          <input type="checkbox" checked={selCities.includes(city)} onChange={() => toggleCity(city)} style={{ accentColor: '#c5a368' }} />
+                          {city}
+                        </label>
+                      ))
+                }
+              </div>
+            </div>
+
+            {/* Terms */}
+            <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', overflow: 'hidden' }}>
+              <div style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#8a7f72', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Termos de busca — {selTerms.length}/{nicheTerms.length} selecionados
+                </span>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button onClick={() => setSelTerms(nicheTerms)} style={{ background: 'none', border: 'none', color: '#c5a368', fontSize: '0.65rem', cursor: 'pointer' }}>todos</button>
+                  <button onClick={() => setSelTerms([])} style={{ background: 'none', border: 'none', color: '#555', fontSize: '0.65rem', cursor: 'pointer' }}>nenhum</button>
+                </div>
+              </div>
+              <div style={{ padding: '0.5rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', maxHeight: '180px', overflowY: 'auto' }}>
+                {!connected
+                  ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic' }}>Servidor offline — inicie o servidor local</span>
+                  : nicheTerms.length === 0
+                    ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic' }}>Carregando…</span>
+                    : nicheTerms.map(term => (
+                        <label key={term} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.76rem', color: selTerms.includes(term) ? '#d8d2c4' : '#555', cursor: 'pointer', userSelect: 'none' }}>
+                          <input type="checkbox" checked={selTerms.includes(term)} onChange={() => toggleTerm(term)} style={{ accentColor: '#c5a368' }} />
+                          {term}
+                        </label>
+                      ))
+                }
+              </div>
+            </div>
           </div>
+        )}
+
+        {/* Run button — always at the bottom of the panel */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.85rem' }}>
+          {activeJob && jobStatus === 'running' && (
+            <button onClick={killJob} style={{
+              background: 'none', border: '1px solid rgba(224,92,92,0.3)',
+              borderRadius: '7px', padding: '0.5rem 0.85rem',
+              color: '#e05c5c', fontSize: '0.82rem', cursor: 'pointer',
+            }}>
+              Parar
+            </button>
+          )}
+          <button onClick={runScript} disabled={!connected || jobStatus === 'running'} style={{
+            background:   !connected || jobStatus === 'running' ? '#2a2520' : '#c5a368',
+            border:       'none', borderRadius: '8px', padding: '0.5rem 1.5rem',
+            color:        !connected || jobStatus === 'running' ? '#555' : '#0c0b09',
+            fontWeight:   700, fontSize: '0.85rem',
+            cursor:       !connected || jobStatus === 'running' ? 'not-allowed' : 'pointer',
+          }}>
+            {jobStatus === 'running' ? 'Executando…' : 'Executar'}
+          </button>
         </div>
       </div>
-
-      {/* Scrape: cities + terms selectors */}
-      {isScrape && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-          {/* Cities */}
-          <div style={{ background: '#161310', border: '1px solid rgba(197,163,104,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
-            <div style={{ padding: '0.6rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#8a7f72', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Cidades ({selCities.length}/{nicheCities.length})
-              </span>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button onClick={() => setSelCities(nicheCities)} style={{ background: 'none', border: 'none', color: '#555', fontSize: '0.65rem', cursor: 'pointer' }}>todas</button>
-                <button onClick={() => setSelCities([])} style={{ background: 'none', border: 'none', color: '#555', fontSize: '0.65rem', cursor: 'pointer' }}>nenhuma</button>
-              </div>
-            </div>
-            <div style={{ padding: '0.6rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', maxHeight: '200px', overflowY: 'auto' }}>
-              {!connected
-                ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic' }}>Conecte o servidor local para carregar cidades</span>
-                : nicheCities.length === 0
-                  ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic' }}>Carregando…</span>
-                  : nicheCities.map(city => (
-                      <label key={city} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: selCities.includes(city) ? '#d8d2c4' : '#444', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={selCities.includes(city)} onChange={() => toggleCity(city)} />
-                        {city}
-                      </label>
-                    ))
-              }
-            </div>
-          </div>
-
-          {/* Terms */}
-          <div style={{ background: '#161310', border: '1px solid rgba(197,163,104,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
-            <div style={{ padding: '0.6rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#8a7f72', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Termos ({selTerms.length}/{nicheTerms.length})
-              </span>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button onClick={() => setSelTerms(nicheTerms)} style={{ background: 'none', border: 'none', color: '#555', fontSize: '0.65rem', cursor: 'pointer' }}>todos</button>
-                <button onClick={() => setSelTerms([])} style={{ background: 'none', border: 'none', color: '#555', fontSize: '0.65rem', cursor: 'pointer' }}>nenhum</button>
-              </div>
-            </div>
-            <div style={{ padding: '0.6rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', maxHeight: '200px', overflowY: 'auto' }}>
-              {!connected
-                ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic' }}>Conecte o servidor local para carregar termos</span>
-                : nicheTerms.length === 0
-                  ? <span style={{ fontSize: '0.75rem', color: '#444', fontStyle: 'italic' }}>Carregando…</span>
-                  : nicheTerms.map(term => (
-                      <label key={term} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: selTerms.includes(term) ? '#d8d2c4' : '#444', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={selTerms.includes(term)} onChange={() => toggleTerm(term)} />
-                        {term}
-                      </label>
-                    ))
-              }
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Live log terminal */}
       {logLines.length > 0 && (
