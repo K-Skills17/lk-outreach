@@ -756,6 +756,335 @@ export const NICHE_CONFIGS: Record<string, NicheAgentConfig> = {
       '{emoji} Orçamento: {lead_name} · {service} · {customer_address} · visita em {preferred_slot} · {lead_phone} · {timing_label}',
   },
 
+
+  // --------------------------------------------------------------------------
+  'moveis-planejados': {
+    display_name:        'Móveis Planejados',
+    niche_emoji:         '🪑',
+    location_based:      true,
+    collection_steps: `1. Ambiente (cozinha, quarto, closet, home office, sala, escritório, etc.)
+2. Endereço do imóvel (rua, número, bairro, cidade)
+3. Medidas aproximadas do espaço (largura × altura × profundidade)
+4. Preferência de material/acabamento (MDF, madeira, cor, etc.)
+5. Nome e telefone de contato
+6. Preferência de dia para visita de medição e orçamento
+7. Confirme os dados e informe que agendaremos a visita`,
+    safety_reply_prefix: 'Entendido — nossa equipe entrará em contato.',
+    guardrails: {
+      price_fallback:      'o orçamento é feito após visita técnica e medição do espaço',
+      diagnosis_qualifier: 'estimamos isso, mas confirmamos com a medição do espaço',
+      booking_qualifier:   'Agendaremos a visita de medição e orçamento pelo WhatsApp.',
+    },
+    safety_triggers: [],
+    notification_template:
+      '{emoji} Orçamento: {lead_name} · {service} · {customer_address} · visita em {preferred_slot} · {lead_phone} · {timing_label}',
+  },
+
+  // --------------------------------------------------------------------------
+  'cirurgia-plastica': {
+    display_name:        'Cirurgia Plástica',
+    niche_emoji:         '⚕️',
+    location_based:      false,
+    collection_steps: `1. Procedimento de interesse (rinoplastia, lipoaspiração, mamoplastia, abdominoplastia, etc.)
+2. Dúvidas ou preocupações gerais
+3. Urgência (há algum prazo?)
+4. Nome e telefone de contato
+5. Preferência de dia/período para consulta de avaliação
+6. Confirme os dados e informe que a clínica entrará em contato`,
+    safety_reply_prefix: 'Isso parece urgente — procure atendimento médico imediatamente se for pós-operatório.',
+    guardrails: {
+      price_fallback:      'os valores são informados pelo médico após consulta de avaliação',
+      diagnosis_qualifier: 'apenas o cirurgião plástico pode indicar o procedimento mais adequado após avaliação presencial',
+      booking_qualifier:   'A clínica confirma a consulta de avaliação pelo WhatsApp.',
+    },
+    safety_triggers: [
+      'dor intensa no peito', 'dificuldade para respirar', 'reação alérgica grave',
+      'sangramento excessivo', 'febre alta após cirurgia', 'complicação pós-operatória',
+    ],
+    notification_template:
+      '{emoji} Novo paciente: {lead_name} · {service} · quer {preferred_slot} · {lead_phone} · {timing_label}',
+  },
+
+  // --------------------------------------------------------------------------
+  'dermatologia-estetica': {
+    display_name:        'Dermatologia & Estética',
+    niche_emoji:         '✨',
+    location_based:      false,
+    collection_steps: `1. Tratamento ou procedimento de interesse (botox, preenchimento, peeling, laser, etc.)
+2. Principal queixa ou objetivo (manchas, rugas, acne, harmonização, etc.)
+3. Urgência
+4. Nome e telefone de contato
+5. Preferência de dia/período para avaliação
+6. Confirme os dados e informe que a clínica entrará em contato`,
+    safety_reply_prefix: 'Isso parece urgente — procure atendimento médico se for reação pós-procedimento.',
+    guardrails: {
+      price_fallback:      'os valores são informados pelo especialista após avaliação da pele',
+      diagnosis_qualifier: 'apenas o dermatologista pode indicar o tratamento mais adequado após avaliação',
+      booking_qualifier:   'A clínica confirma o agendamento pelo WhatsApp.',
+    },
+    safety_triggers: [
+      'alergia grave', 'reação alérgica intensa', 'inchaço no rosto',
+      'dificuldade para respirar', 'queimadura química',
+    ],
+    notification_template:
+      '{emoji} Novo paciente: {lead_name} · {service} · quer {preferred_slot} · {lead_phone} · {timing_label}',
+  },
+
+  // --------------------------------------------------------------------------
+  ortopedia: {
+    display_name:        'Ortopedia',
+    niche_emoji:         '🦴',
+    location_based:      false,
+    collection_steps: `1. Região do corpo afetada (joelho, coluna, ombro, quadril, tornozelo, etc.)
+2. Sintoma principal (dor, inchaço, limitação de movimento, etc.)
+3. Há quanto tempo apresenta o problema
+4. Urgência (dor intensa, trauma recente, etc.)
+5. Nome e telefone de contato
+6. Preferência de dia/período para consulta
+7. Confirme os dados e informe que a clínica entrará em contato`,
+    safety_reply_prefix: 'Isso parece urgente — não force o movimento e procure atendimento imediato se houver suspeita de fratura.',
+    guardrails: {
+      price_fallback:      'os valores são informados pelo médico após avaliação',
+      diagnosis_qualifier: 'apenas o ortopedista pode diagnosticar após exame clínico e imagem',
+      booking_qualifier:   'A clínica confirma a consulta pelo WhatsApp.',
+    },
+    safety_triggers: [
+      'fratura exposta', 'osso aparecendo', 'dor insuportável',
+      'não consigo mover', 'paralisia', 'perda de sensibilidade nos membros',
+    ],
+    notification_template:
+      '{emoji} Novo paciente: {lead_name} · {symptom} · {service} · quer {preferred_slot} · {lead_phone} · {timing_label}',
+  },
+
+  // --------------------------------------------------------------------------
+  fertilidade: {
+    display_name:        'Fertilidade & Reprodução',
+    niche_emoji:         '🌱',
+    location_based:      false,
+    collection_steps: `1. Tratamento de interesse (FIV, inseminação, congelamento de óvulos, avaliação geral, etc.)
+2. Situação atual (tentando engravidar há quanto tempo, algum diagnóstico anterior?)
+3. Urgência
+4. Nome e telefone de contato
+5. Preferência de dia/período para consulta inicial
+6. Confirme os dados e informe que a clínica entrará em contato`,
+    safety_reply_prefix: 'Isso parece urgente — procure atendimento médico imediatamente.',
+    guardrails: {
+      price_fallback:      'os valores e protocolos são definidos pelo especialista após avaliação completa do casal',
+      diagnosis_qualifier: 'o especialista irá indicar o tratamento mais adequado após avaliação',
+      booking_qualifier:   'A clínica confirma a consulta pelo WhatsApp.',
+    },
+    safety_triggers: [
+      'dor pélvica intensa', 'gravidez ectópica', 'sangramento intenso', 'emergência obstétrica',
+    ],
+    notification_template:
+      '{emoji} Novo paciente: {lead_name} · {service} · quer {preferred_slot} · {lead_phone} · {timing_label}',
+  },
+
+  // --------------------------------------------------------------------------
+  'transplante-capilar': {
+    display_name:        'Transplante Capilar',
+    niche_emoji:         '💆',
+    location_based:      false,
+    collection_steps: `1. Tipo de queda (calvície frontal, coroa, difusa, barba, sobrancelha)
+2. Área afetada (tamanho da região calva aproximado)
+3. Já realizou algum tratamento anterior para queda?
+4. Nome e telefone de contato
+5. Preferência de dia/período para avaliação gratuita
+6. Confirme os dados e informe que a clínica entrará em contato`,
+    safety_reply_prefix: 'Entendido — nossa equipe entrará em contato.',
+    guardrails: {
+      price_fallback:      'o número de grafts e o valor são definidos após avaliação capilar gratuita',
+      diagnosis_qualifier: 'apenas o especialista pode indicar a técnica mais adequada após avaliação do couro cabeludo',
+      booking_qualifier:   'A clínica confirma a avaliação gratuita pelo WhatsApp.',
+    },
+    safety_triggers: [
+      'queda de cabelo repentina e total', 'alopecia areata grave',
+    ],
+    notification_template:
+      '{emoji} Novo paciente: {lead_name} · {service} · quer {preferred_slot} · {lead_phone} · {timing_label}',
+  },
+
+  // --------------------------------------------------------------------------
+  oftalmologia: {
+    display_name:        'Oftalmologia',
+    niche_emoji:         '👁️',
+    location_based:      false,
+    collection_steps: `1. Principal queixa ou procedimento de interesse (miopia, catarata, LASIK, check-up, etc.)
+2. Sintomas atuais (visão embaçada, dor, lacrimejamento, etc.)
+3. Usa óculos ou lentes de contato?
+4. Urgência
+5. Nome e telefone de contato
+6. Preferência de dia/período para consulta
+7. Confirme os dados e informe que a clínica entrará em contato`,
+    safety_reply_prefix: 'Isso parece urgente — perda súbita de visão é emergência oftalmológica, procure pronto-socorro imediatamente.',
+    guardrails: {
+      price_fallback:      'os valores são informados pelo médico após exame completo de vista',
+      diagnosis_qualifier: 'apenas o oftalmologista pode diagnosticar após exames específicos',
+      booking_qualifier:   'A clínica confirma a consulta pelo WhatsApp.',
+    },
+    safety_triggers: [
+      'perda súbita de visão', 'flashes de luz intensos', 'véu escuro na visão',
+      'olho vermelho com dor intensa', 'trauma ocular', 'corpo estranho no olho',
+    ],
+    notification_template:
+      '{emoji} Novo paciente: {lead_name} · {service} · quer {preferred_slot} · {lead_phone} · {timing_label}',
+  },
+
+  // --------------------------------------------------------------------------
+  'cirurgia-bariatrica': {
+    display_name:        'Cirurgia Bariátrica',
+    niche_emoji:         '⚕️',
+    location_based:      false,
+    collection_steps: `1. Procedimento de interesse (sleeve, bypass, balão gástrico, endoscopia bariátrica, etc.)
+2. IMC aproximado ou peso atual (para verificar indicação básica)
+3. Tentativas anteriores de emagrecimento
+4. Urgência
+5. Nome e telefone de contato
+6. Preferência de dia/período para avaliação
+7. Confirme os dados e informe que a clínica entrará em contato`,
+    safety_reply_prefix: 'Isso parece urgente — complicações pós-operatórias requerem atendimento médico imediato.',
+    guardrails: {
+      price_fallback:      'os valores variam por procedimento e são informados pelo especialista após avaliação',
+      diagnosis_qualifier: 'apenas o cirurgião pode indicar o procedimento mais adequado após avaliação completa',
+      booking_qualifier:   'A clínica confirma a consulta pelo WhatsApp.',
+    },
+    safety_triggers: [
+      'dor abdominal intensa', 'vômitos constantes', 'febre após cirurgia',
+      'deiscência de sutura', 'complicação bariátrica',
+    ],
+    notification_template:
+      '{emoji} Novo paciente: {lead_name} · {service} · quer {preferred_slot} · {lead_phone} · {timing_label}',
+  },
+
+  // --------------------------------------------------------------------------
+  fisioterapia: {
+    display_name:        'Fisioterapia & Reabilitação',
+    niche_emoji:         '🏥',
+    location_based:      false,
+    collection_steps: `1. Região do corpo / problema (coluna, joelho, ombro, pós-operatório, neurológico, etc.)
+2. Sintoma principal (dor, limitação de movimento, fraqueza muscular, etc.)
+3. Há quanto tempo apresenta o problema
+4. Possui encaminhamento médico?
+5. Nome e telefone de contato
+6. Preferência de dia/período para avaliação inicial
+7. Confirme os dados e informe que a clínica entrará em contato`,
+    safety_reply_prefix: 'Isso parece urgente — procure atendimento médico imediato se houver perda de sensibilidade ou paralisia.',
+    guardrails: {
+      price_fallback:      'os valores são informados após avaliação inicial com o fisioterapeuta',
+      diagnosis_qualifier: 'apenas o fisioterapeuta pode avaliar e indicar o tratamento após exame físico',
+      booking_qualifier:   'A clínica confirma a sessão pelo WhatsApp.',
+    },
+    safety_triggers: [
+      'paralisia', 'perda de sensibilidade', 'incontinência urinária repentina',
+      'dor irradiando para o braço com falta de ar',
+    ],
+    notification_template:
+      '{emoji} Novo paciente: {lead_name} · {symptom} · quer {preferred_slot} · {lead_phone} · {timing_label}',
+  },
+
+  // --------------------------------------------------------------------------
+  'odontologia-implantes': {
+    display_name:        'Odontologia & Implantes',
+    niche_emoji:         '🦷',
+    location_based:      false,
+    collection_steps: `1. Interesse principal (implante dentário, facetas, lente de contato dental, clareamento, prótese, etc.)
+2. Número de dentes ausentes ou área de interesse
+3. Possui prótese atual?
+4. Urgência (dor, dente quebrado, etc.)
+5. Nome e telefone de contato
+6. Preferência de dia/período para avaliação
+7. Confirme os dados e informe que a clínica entrará em contato`,
+    safety_reply_prefix: 'Isso parece urgente — inchaço na face com febre pode ser infecção grave, procure atendimento imediato.',
+    guardrails: {
+      price_fallback:      'os valores são informados pelo dentista após avaliação clínica e radiográfica',
+      diagnosis_qualifier: 'apenas o dentista pode indicar o tratamento mais adequado após exame da boca',
+      booking_qualifier:   'A clínica confirma a avaliação pelo WhatsApp.',
+    },
+    safety_triggers: [
+      'dor de dente insuportável', 'inchaço no rosto com febre',
+      'abscesso dentário', 'infecção na gengiva com febre',
+    ],
+    notification_template:
+      '{emoji} Novo paciente: {lead_name} · {service} · quer {preferred_slot} · {lead_phone} · {timing_label}',
+  },
+
+  // --------------------------------------------------------------------------
+  'cirurgia-estetica-corporal': {
+    display_name:        'Estética Corporal',
+    niche_emoji:         '✨',
+    location_based:      false,
+    collection_steps: `1. Principal preocupação ou área do corpo (abdômen, flancos, coxas, braços, etc.)
+2. Tratamento de interesse (criolipólise, radiofrequência, HIFU, cavitação, etc.)
+3. Já realizou algum tratamento corporal anteriormente?
+4. Urgência
+5. Nome e telefone de contato
+6. Preferência de dia/período para avaliação
+7. Confirme os dados e informe que a clínica entrará em contato`,
+    safety_reply_prefix: 'Isso parece urgente — reações intensas após procedimento requerem avaliação médica imediata.',
+    guardrails: {
+      price_fallback:      'os valores são informados pelo especialista após avaliação corporal',
+      diagnosis_qualifier: 'apenas o especialista pode indicar o tratamento mais eficaz após avaliação',
+      booking_qualifier:   'A clínica confirma a avaliação pelo WhatsApp.',
+    },
+    safety_triggers: [
+      'alergia grave ao procedimento', 'reação intensa após sessão',
+      'queimadura por equipamento', 'dor insuportável pós procedimento',
+    ],
+    notification_template:
+      '{emoji} Novo paciente: {lead_name} · {service} · quer {preferred_slot} · {lead_phone} · {timing_label}',
+  },
+
+  // --------------------------------------------------------------------------
+  'diagnostico-imagem': {
+    display_name:        'Diagnóstico por Imagem',
+    niche_emoji:         '🏥',
+    location_based:      false,
+    collection_steps: `1. Tipo de exame (tomografia, ressonância, ultrassom, mamografia, ecocardiograma, etc.)
+2. Possui pedido médico?
+3. Urgência (o médico solicitou com prioridade?)
+4. Dúvidas sobre preparo ou jejum para o exame
+5. Nome e telefone de contato
+6. Preferência de dia/período para o exame
+7. Confirme os dados e informe que a equipe confirmará o agendamento`,
+    safety_reply_prefix: 'Isso parece urgente — em emergência médica, procure pronto-socorro imediatamente.',
+    guardrails: {
+      price_fallback:      'os valores são informados pela equipe de agendamento',
+      diagnosis_qualifier: 'a interpretação dos exames é realizada pelo médico solicitante',
+      booking_qualifier:   'O centro confirma o agendamento pelo WhatsApp.',
+    },
+    safety_triggers: [
+      'dor no peito com suspeita de infarto', 'AVC suspeito', 'trauma grave', 'emergência médica',
+    ],
+    notification_template:
+      '{emoji} Novo paciente: {lead_name} · {service} · quer {preferred_slot} · {lead_phone} · {timing_label}',
+  },
+
+  // --------------------------------------------------------------------------
+  'veterinaria-especializada': {
+    display_name:        'Veterinária Especializada',
+    niche_emoji:         '🐾',
+    location_based:      false,
+    collection_steps: `1. Espécie e raça do animal (cão, gato, etc.)
+2. Idade do animal
+3. Sintoma ou especialidade necessária (cardiologia, oncologia, ortopedia, neurologia, etc.)
+4. Urgência (o animal está em sofrimento agora?)
+5. Nome do tutor e telefone de contato
+6. Preferência de dia/período para consulta
+7. Confirme os dados e informe que o hospital entrará em contato`,
+    safety_reply_prefix: 'Isso parece urgente — animal inconsciente, convulsionando ou com dificuldade para respirar precisa de atendimento de emergência imediato.',
+    guardrails: {
+      price_fallback:      'os valores são informados pelo especialista após avaliação do animal',
+      diagnosis_qualifier: 'apenas o veterinário especialista pode diagnosticar após exame clínico e exames complementares',
+      booking_qualifier:   'O hospital confirma a consulta pelo WhatsApp.',
+    },
+    safety_triggers: [
+      'animal inconsciente', 'convulsão', 'dificuldade para respirar',
+      'sangramento intenso', 'suspeita de envenenamento', 'atropelamento',
+    ],
+    notification_template:
+      '{emoji} Novo tutor: {lead_name} · {service} · {symptom} · quer {preferred_slot} · {lead_phone} · {timing_label}',
+  },
+
 };
 
 // Slug aliases

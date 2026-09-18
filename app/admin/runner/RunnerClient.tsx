@@ -11,7 +11,10 @@ const SCRIPTS = [
   { id: 'score',    label: 'Pontuar',   desc: 'Calcular score + tier A/B/C',     color: '#c5a368' },
   { id: 'slug',     label: 'Slugs',     desc: 'Gerar links de auditoria',        color: '#e08c2c' },
   { id: 'outreach', label: 'Outreach',  desc: 'Enviar mensagens WhatsApp',        color: '#4caf7d' },
-  { id: 'notify',   label: 'Notificar', desc: 'Alertar donos de leads novos',     color: '#a06cd5' },
+  { id: 'watch',          label: 'Respostas',    desc: 'Checar respostas + enviar booking',      color: '#2196f3' },
+  { id: 'notify_booking',  label: 'Agendamentos',  desc: 'Notificar dono de novos agendamentos',  color: '#00bcd4' },
+  { id: 'remind_booking',  label: 'Lembretes',     desc: 'WhatsApp de lembrete para quem agendou', color: '#009688' },
+  { id: 'notify',         label: 'Notificar',    desc: 'Alertar donos de leads novos',            color: '#a06cd5' },
   { id: 'billing',  label: 'Cobrança',  desc: 'Checar D+25/D+35 e cortar bots',  color: '#e05c5c' },
 ];
 
@@ -20,14 +23,21 @@ const STATUS_COLOR: Record<string, string> = {
   done: '#4caf7d', error: '#e05c5c', killed: '#e08c2c',
 };
 
+type SenderFlag = { enabled: boolean; updated_at: string | null };
+
 export default function RunnerClient() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [niches,    setNiches]    = useState<string[]>([]);
   const [jobs,      setJobs]      = useState<JobSummary[]>([]);
 
+  // Sender kill switch
+  const [sender,       setSender]      = useState<SenderFlag | null>(null);
+  const [senderActing, setSenderActing] = useState(false);
+
   // Form state
   const [selScript,  setSelScript]  = useState('outreach');
   const [selNiche,   setSelNiche]   = useState('oficinas');
+  const [selNumber,  setSelNumber]  = useState('');
   const [dryRun,     setDryRun]     = useState(false);
   const [phase,      setPhase]      = useState<string>('');
   const [tier,       setTier]       = useState<string>('');
@@ -47,12 +57,32 @@ export default function RunnerClient() {
   const [jobStatus,  setJobStatus]  = useState<string>('');
   const logRef = useRef<HTMLDivElement>(null);
 
-  // Connect to local server
+  // Connect to local server + load sender flag
   useEffect(() => {
     checkConnection();
+    loadSender();
     const t = setInterval(checkConnection, 5000);
     return () => clearInterval(t);
   }, []);
+
+  async function loadSender() {
+    const res = await fetch('/api/admin/sender');
+    if (res.ok) setSender(await res.json());
+  }
+
+  async function toggleSender(action: 'stop' | 'start') {
+    setSenderActing(true);
+    try {
+      const res = await fetch('/api/admin/sender', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) setSender(await res.json());
+    } finally {
+      setSenderActing(false);
+    }
+  }
 
   // Load niche defaults when scrape is selected or niche changes
   useEffect(() => {
@@ -96,10 +126,11 @@ export default function RunnerClient() {
     setJobStatus('starting');
     try {
       const body: Record<string, unknown> = { script: selScript, niche: selNiche, dry_run: dryRun };
-      if (phase)  body.phase  = Number(phase);
-      if (tier)   body.tier   = tier;
-      if (limit)  body.limit  = Number(limit);
-      if (rescore) body.rescore = true;
+      if (phase)     body.phase  = Number(phase);
+      if (tier)      body.tier   = tier;
+      if (limit)     body.limit  = Number(limit);
+      if (rescore)   body.rescore = true;
+      if (selNumber) body.number = selNumber;
       if (selScript === 'scrape') {
         if (selCities.length) body.cities = selCities.join(',');
         if (selTerms.length)  body.terms  = selTerms.join(',');
@@ -185,6 +216,30 @@ export default function RunnerClient() {
         </div>
       </div>
 
+      {/* Sender kill switch */}
+      {sender !== null && (
+        <div style={{ background: '#161310', border: `1px solid ${sender.enabled ? 'rgba(76,175,125,0.15)' : 'rgba(224,92,92,0.2)'}`, borderRadius: '10px', padding: '0.7rem 1rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: sender.enabled ? '#4caf7d' : '#e05c5c', boxShadow: sender.enabled ? '0 0 5px #4caf7d88' : '0 0 5px #e05c5c88' }} />
+            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: sender.enabled ? '#4caf7d' : '#e05c5c' }}>
+              Outreach {sender.enabled ? 'liberado' : 'pausado'}
+            </span>
+          </div>
+          {sender.enabled ? (
+            <button onClick={() => toggleSender('stop')} disabled={senderActing} style={{ background: 'rgba(224,92,92,0.1)', border: '1px solid rgba(224,92,92,0.3)', borderRadius: '6px', padding: '0.3rem 0.85rem', color: senderActing ? '#444' : '#e05c5c', fontSize: '0.78rem', fontWeight: 700, cursor: senderActing ? 'not-allowed' : 'pointer' }}>
+              {senderActing ? 'Parando…' : 'Parar Outreach'}
+            </button>
+          ) : (
+            <button onClick={() => toggleSender('start')} disabled={senderActing} style={{ background: 'rgba(76,175,125,0.1)', border: '1px solid rgba(76,175,125,0.3)', borderRadius: '6px', padding: '0.3rem 0.85rem', color: senderActing ? '#444' : '#4caf7d', fontSize: '0.78rem', fontWeight: 700, cursor: senderActing ? 'not-allowed' : 'pointer' }}>
+              {senderActing ? 'Liberando…' : 'Liberar Outreach'}
+            </button>
+          )}
+          <span style={{ fontSize: '0.68rem', color: '#3a3a3a', marginLeft: 'auto' }}>
+            Para o envio antes da próxima mensagem (graceful stop)
+          </span>
+        </div>
+      )}
+
       {/* Script selector cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.6rem' }}>
         {SCRIPTS.map(s => (
@@ -245,6 +300,17 @@ export default function RunnerClient() {
               <label style={{ display: 'block', fontSize: '0.65rem', color: '#555', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}>Limite</label>
               <input type="number" value={limit} onChange={e => setLimit(e.target.value)}
                 placeholder="sem limite" style={{ ...inputStyle, width: '100px' }} />
+            </div>
+          )}
+
+          {needsPhase && (
+            <div>
+              <label style={{ display: 'block', fontSize: '0.65rem', color: '#555', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}>Número</label>
+              <select value={selNumber} onChange={e => setSelNumber(e.target.value)} style={selectStyle}>
+                <option value="">Auto</option>
+                <option value="number_1">number_1</option>
+                <option value="number_2">number_2</option>
+              </select>
             </div>
           )}
 
