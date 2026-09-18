@@ -30,24 +30,27 @@ export async function GET() {
     `,
   ]);
 
-  const dbSlugs = new Set(dbCampaigns.map((c: { slug: string }) => c.slug));
-  const statMap: Record<string, unknown> = {};
-  for (const s of stats as Array<{ campaign_slug: string }>) {
-    statMap[s.campaign_slug] = s;
+  const dbRows = dbCampaigns as Record<string, unknown>[];
+  const statRows = stats as Record<string, unknown>[];
+
+  const dbSlugs = new Set(dbRows.map(c => c.slug as string));
+  const statMap: Record<string, Record<string, unknown>> = {};
+  for (const s of statRows) {
+    statMap[s.campaign_slug as string] = s;
   }
 
   const emptyStats = { total: 0, contacted: 0, replied: 0, opted_out: 0, won: 0, last_sent: null };
 
   const merged = [
     // DB campaigns (may have no prospects yet)
-    ...dbCampaigns.map((c: { slug: string }) => ({
+    ...dbRows.map(c => ({
       ...c,
       source: 'db',
       ...(statMap[c.slug as string] ?? emptyStats),
     })),
     // YAML/legacy campaigns: have prospects but no DB record
-    ...(stats as Array<{ campaign_slug: string }>)
-      .filter(s => !dbSlugs.has(s.campaign_slug))
+    ...statRows
+      .filter(s => !dbSlugs.has(s.campaign_slug as string))
       .map(s => ({
         slug: s.campaign_slug,
         name: s.campaign_slug,
