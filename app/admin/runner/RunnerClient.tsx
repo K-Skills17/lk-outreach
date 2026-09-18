@@ -56,6 +56,7 @@ export default function RunnerClient() {
   const [logLines,   setLogLines]   = useState<string[]>([]);
   const [jobStatus,  setJobStatus]  = useState<string>('');
   const logRef = useRef<HTMLDivElement>(null);
+  const esRef  = useRef<EventSource | null>(null);
 
   // Connect to local server + load sender flag
   useEffect(() => {
@@ -122,8 +123,9 @@ export default function RunnerClient() {
   }
 
   async function runScript() {
+    if (esRef.current) { esRef.current.close(); esRef.current = null; }
     setLogLines([]);
-    setJobStatus('starting');
+    setJobStatus('running');
     try {
       const body: Record<string, unknown> = { script: selScript, niche: selNiche, dry_run: dryRun };
       if (phase)     body.phase  = Number(phase);
@@ -152,18 +154,26 @@ export default function RunnerClient() {
   }
 
   function streamLogs(jobId: string) {
+    if (esRef.current) { esRef.current.close(); }
     const es = new EventSource(`${LOCAL}/logs/${jobId}`);
+    esRef.current = es;
     es.onmessage = (e) => {
       const data = JSON.parse(e.data);
       if (data.__done__) {
         setJobStatus(data.status);
         es.close();
+        esRef.current = null;
         refreshJobs();
       } else if (data.line) {
+        setJobStatus(s => s === '' ? 'running' : s);
         setLogLines(prev => [...prev, data.line]);
       }
     };
-    es.onerror = () => { es.close(); setJobStatus('error'); };
+    es.onerror = () => {
+      es.close();
+      esRef.current = null;
+      setJobStatus(s => (s === 'running' || s === '') ? 'error' : s);
+    };
   }
 
   async function killJob() {
@@ -390,14 +400,14 @@ export default function RunnerClient() {
               Parar
             </button>
           )}
-          <button onClick={runScript} disabled={!connected || jobStatus === 'running'} style={{
-            background:   !connected || jobStatus === 'running' ? '#2a2520' : '#c5a368',
+          <button onClick={runScript} disabled={!connected || ['running', 'starting'].includes(jobStatus)} style={{
+            background:   !connected || ['running', 'starting'].includes(jobStatus) ? '#2a2520' : '#c5a368',
             border:       'none', borderRadius: '8px', padding: '0.5rem 1.5rem',
-            color:        !connected || jobStatus === 'running' ? '#555' : '#0c0b09',
+            color:        !connected || ['running', 'starting'].includes(jobStatus) ? '#555' : '#0c0b09',
             fontWeight:   700, fontSize: '0.85rem',
-            cursor:       !connected || jobStatus === 'running' ? 'not-allowed' : 'pointer',
+            cursor:       !connected || ['running', 'starting'].includes(jobStatus) ? 'not-allowed' : 'pointer',
           }}>
-            {jobStatus === 'running' ? 'Executando…' : 'Executar'}
+            {['running', 'starting'].includes(jobStatus) ? 'Executando…' : 'Executar'}
           </button>
         </div>
       </div>
