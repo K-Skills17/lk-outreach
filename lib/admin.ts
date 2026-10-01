@@ -28,6 +28,7 @@ export type AdminStats = {
   won: number;
   lost: number;
   opted_out: number;
+  ever_contacted: number;
   audit_sent: number;
   audit_views: number;
   total_sent: number;
@@ -97,6 +98,7 @@ export async function getAdminStats(): Promise<AdminStats> {
         COUNT(*) FILTER (WHERE status = 'won')::int                            AS won,
         COUNT(*) FILTER (WHERE status = 'lost')::int                           AS lost,
         COUNT(*) FILTER (WHERE opted_out = true)::int                          AS opted_out,
+        COUNT(*) FILTER (WHERE last_contacted_at IS NOT NULL)::int             AS ever_contacted,
         COUNT(*) FILTER (WHERE audit_slug IS NOT NULL)::int                    AS audit_sent,
         COUNT(*) FILTER (WHERE audit_viewed_at IS NOT NULL)::int               AS audit_views
       FROM prospects
@@ -154,14 +156,16 @@ export async function getReplyQueue(): Promise<ReplyQueueRow[]> {
 // Prospects list
 // ---------------------------------------------------------------------------
 
+export const PROSPECTS_PAGE_SIZE = 50;
+
 export async function getProspects(opts: {
   niche?: string;
   tier?: string;
   status?: string;
   page?: number;
 }): Promise<{ rows: ProspectRow[]; total: number }> {
-  const limit  = 50;
-  const offset = ((opts.page ?? 1) - 1) * limit;
+  const limit  = PROSPECTS_PAGE_SIZE;
+  const offset = (Math.max(1, opts.page ?? 1) - 1) * limit;
 
   // Build dynamic filter
   const niche  = opts.niche  || null;
@@ -219,24 +223,16 @@ export async function updateProspect(
   id: string,
   patch: { status?: string; notes?: string },
 ): Promise<boolean> {
-  if (patch.status && !ALLOWED_STATUSES.has(patch.status)) return false;
+  if (patch.status !== undefined && !ALLOWED_STATUSES.has(patch.status)) return false;
 
-  if (patch.status !== undefined && patch.notes !== undefined) {
-    await sql`
-      UPDATE prospects
-      SET status = ${patch.status}, notes = ${patch.notes}, updated_at = now()
-      WHERE id = ${id}
-    `;
-  } else if (patch.status !== undefined) {
-    await sql`
-      UPDATE prospects SET status = ${patch.status}, updated_at = now() WHERE id = ${id}
-    `;
-  } else if (patch.notes !== undefined) {
-    await sql`
-      UPDATE prospects SET notes = ${patch.notes}, updated_at = now() WHERE id = ${id}
-    `;
-  }
-
+  // COALESCE keeps the current value for any field not present in the patch.
+  await sql`
+    UPDATE prospects
+    SET status     = COALESCE(${patch.status ?? null}, status),
+        notes      = COALESCE(${patch.notes  ?? null}, notes),
+        updated_at = now()
+    WHERE id = ${id}
+  `;
   return true;
 }
 
@@ -265,7 +261,8 @@ export async function getBillingTenants(): Promise<BillingTenantRow[]> {
   const rows = await sql`
     SELECT
       id, name, slug, dashboard_token, owner_name, owner_phone, go_live_at,
-      monthly_status, bot_enabled, price_brl,
+      monthly_status, bot_enabled,
+      price_brl::float8 AS price_brl,  -- NUMERIC comes back as a string otherwise
       billing_reminder_sent, billing_reminder_sent_at,
       billing_cutoff_sent,   billing_cutoff_sent_at
     FROM tenants
@@ -280,27 +277,43 @@ export async function updateTenantBilling(
   id:    string,
   patch: { monthly_status?: string; bot_enabled?: boolean },
 ): Promise<boolean> {
-  if (patch.monthly_status && !ALLOWED_MONTHLY_STATUSES.has(patch.monthly_status)) return false;
+  if (patch.monthly_status !== undefined && !ALLOWED_MONTHLY_STATUSES.has(patch.monthly_status)) return false;
 
-  if (patch.monthly_status !== undefined && patch.bot_enabled !== undefined) {
-    await sql`
-      UPDATE tenants
-      SET monthly_status = ${patch.monthly_status},
-          bot_enabled    = ${patch.bot_enabled},
-          updated_at     = now()
-      WHERE id = ${id}
-    `;
-  } else if (patch.monthly_status !== undefined) {
-    await sql`
-      UPDATE tenants
-      SET monthly_status = ${patch.monthly_status}, updated_at = now()
-      WHERE id = ${id}
-    `;
-  } else if (patch.bot_enabled !== undefined) {
-    await sql`
-      UPDATE tenants SET bot_enabled = ${patch.bot_enabled}, updated_at = now() WHERE id = ${id}
-    `;
-  }
-
+  await sql`
+    UPDATE tenants
+    SET monthly_status = COALESCE(${patch.monthly_status ?? null}, monthly_status),
+        bot_enabled    = COALESCE(${patch.bot_enabled    ?? null}::boolean, bot_enabled),
+        updated_at     = now()
+    WHERE id = ${id}
+  `;
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// System flags (kill switches read by the Python workers)
+// ---------------------------------------------------------------------------
+
+export type SystemFlag = { enabled: boolean; updated_at: string | null };
+
+/** A missing row means "enabled" — workers default to running. */
+export async function getSystemFlag(key: string): Promise<SystemFlag> {
+  const rows = await sql`
+    SELECT value, updated_at::text FROM system_flags WHERE key = ${key}
+  ` as { value: string | null; updated_at: string | null }[];
+  const row = rows[0];
+  return {
+    enabled:    !row || row.value?.toLowerCase() !== 'false',
+    updated_at: row?.updated_at ?? null,
+  };
+}
+
+export async function setSystemFlag(key: string, enabled: boolean): Promise<SystemFlag> {
+  const value = enabled ? 'true' : 'false';
+  const rows  = await sql`
+    INSERT INTO system_flags (key, value, updated_at)
+    VALUES (${key}, ${value}, now())
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at
+    RETURNING updated_at::text
+  ` as { updated_at: string }[];
+  return { enabled, updated_at: rows[0]?.updated_at ?? null };
 }

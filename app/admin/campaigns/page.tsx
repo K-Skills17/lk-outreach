@@ -135,12 +135,15 @@ export default function CampaignsPage() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch('/api/admin/campaigns');
-    if (res.ok) {
-      const data = await res.json();
-      setCampaigns(data.campaigns ?? []);
+    try {
+      const res = await fetch('/api/admin/campaigns');
+      if (res.ok) {
+        const data = await res.json();
+        setCampaigns(data.campaigns ?? []);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => { load(); }, []);
@@ -173,7 +176,7 @@ export default function CampaignsPage() {
           max_chars:   Number(form.max_chars) || 360,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setFormError(data.error ?? 'Erro ao criar campanha.');
         return;
@@ -181,6 +184,8 @@ export default function CampaignsPage() {
       setShowForm(false);
       setForm(EMPTY_FORM);
       await load();
+    } catch {
+      setFormError('Falha na conexão. Tente novamente.');
     } finally {
       setSaving(false);
     }
@@ -188,7 +193,9 @@ export default function CampaignsPage() {
 
   async function handleDelete(slug: string) {
     if (!confirm(`Deletar campanha "${slug}"? Os prospectos NÃO serão apagados.`)) return;
-    await fetch(`/api/admin/campaigns?slug=${encodeURIComponent(slug)}`, { method: 'DELETE' });
+    const res = await fetch(`/api/admin/campaigns?slug=${encodeURIComponent(slug)}`, { method: 'DELETE' })
+      .catch(() => null);
+    if (!res?.ok) alert('Erro ao deletar campanha.');
     await load();
   }
 

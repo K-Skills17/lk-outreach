@@ -6,7 +6,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 function LoginForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const from         = searchParams.get('from') || '/admin';
+  // Only follow same-site admin paths — never an absolute or protocol-relative URL.
+  const fromParam    = searchParams.get('from') ?? '';
+  const from         = /^\/admin(\/|$)/.test(fromParam) && fromParam !== '/admin/login' ? fromParam : '/admin';
 
   const [secret,  setSecret]  = useState('');
   const [error,   setError]   = useState('');
@@ -23,9 +25,10 @@ function LoginForm() {
         body:    JSON.stringify({ secret }),
       });
       if (res.ok) {
-        router.push(from);
+        router.replace(from);
+        router.refresh();
       } else {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         setError(data.error || 'Erro desconhecido.');
       }
     } catch {

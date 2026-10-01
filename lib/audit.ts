@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import sql from './db';
 
 // Opening hours shape stored in Neon as JSONB.
@@ -34,7 +35,9 @@ export type AuditProspect = {
   audit_viewed_at: string | null;
 };
 
-export async function getProspectBySlug(slug: string): Promise<AuditProspect | null> {
+// cache(): generateMetadata and the page both call this in the same request —
+// dedupe to a single query.
+export const getProspectBySlug = cache(async (slug: string): Promise<AuditProspect | null> => {
   const rows = await sql`
     SELECT
       id, name, city, bairro, state, phone,
@@ -49,7 +52,7 @@ export async function getProspectBySlug(slug: string): Promise<AuditProspect | n
   `;
   if (!rows[0]) return null;
   return rows[0] as unknown as AuditProspect;
-}
+});
 
 export async function markAuditViewed(slug: string): Promise<void> {
   // Only records first view — no-op if already set
@@ -80,9 +83,10 @@ export const WEEKDAYS: (keyof OpeningHours)[] = ['mon', 'tue', 'wed', 'thu', 'fr
 export const EARLY_THRESHOLD = '18:30';
 export const SAT_THRESHOLD   = '13:00';
 
+/** Closing time of the day's LAST slot (a lunch break must not count as closing). */
 export function getClosingTime(slots: DaySlots): string | null {
   if (!slots || slots.length === 0) return null;
-  return slots[0][1] ?? null;
+  return slots[slots.length - 1][1] ?? null;
 }
 
 export function getOpeningTime(slots: DaySlots): string | null {
@@ -96,9 +100,14 @@ export function closesEarlyWeekdays(oh: OpeningHours, threshold = EARLY_THRESHOL
   return closings.length > 0 && closings.every(t => t <= threshold);
 }
 
+/** True when a day has no opening slots (null, missing or empty). */
+export function isDayClosed(slots: DaySlots | undefined): boolean {
+  return !slots || slots.length === 0;
+}
+
 /** Returns true if Sunday is closed. */
 export function sundayClosed(oh: OpeningHours): boolean {
-  return oh.sun === null;
+  return isDayClosed(oh.sun);
 }
 
 /** Format 'HH:MM' to 'Hh' or 'H:MMh' (Portuguese compact form). */

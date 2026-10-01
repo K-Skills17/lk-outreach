@@ -85,8 +85,10 @@ export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
 }
 
 export async function getTenantByPhone(phone: string): Promise<Tenant | null> {
-  // Normalize: strip everything except digits
+  // Normalize: strip everything except digits. Require a full DDD + number so
+  // an empty/garbage input can never match a tenant with a malformed phone.
   const digits = phone.replace(/\D/g, '');
+  if (digits.length < 10) return null;
   const rows = await sql`
     SELECT id, name, slug, niche, config, bot_enabled,
            owner_phone, owner_name, owner_email, dashboard_token
@@ -124,53 +126,68 @@ export async function createConversation(
   return (rows[0] as { id: string }).id;
 }
 
-export async function getConversation(id: string): Promise<ConversationRecord | null> {
-  const rows = await sql`SELECT * FROM conversations WHERE id = ${id} LIMIT 1`;
+/**
+ * Loads a conversation only if it belongs to the given tenant. Compares ids as
+ * text so a malformed id from the client yields "not found" instead of a
+ * Postgres cast error.
+ */
+export async function getConversation(id: string, tenantId: string): Promise<ConversationRecord | null> {
+  const rows = await sql`
+    SELECT id, tenant_id, started_at, source, turns, qualified,
+           service, vehicle, symptom, urgency, lead_name, lead_phone,
+           preferred_slot, booking_status, customer_address, transcript,
+           owner_notified, owner_notified_at
+    FROM   conversations
+    WHERE  id::text = ${id} AND tenant_id = ${tenantId}
+    LIMIT  1
+  `;
   return (rows[0] as unknown as ConversationRecord) ?? null;
 }
 
+/**
+ * Appends turns and merges extracted fields in a single UPDATE, so concurrent
+ * messages can't overwrite each other's transcript. Extracted values only
+ * fill in or replace — a null/empty extraction never erases known data.
+ * owner_notified is reset to false the moment the conversation first becomes
+ * qualified, which is what the Python notifier picks up.
+ */
 export async function saveConversationTurn(
   convId:    string,
   newTurns:  ConversationTurn[],
   extracted: ExtractedFields,
-  wasQualifiedBefore: boolean,
 ): Promise<void> {
-  const conv = await getConversation(convId);
-  if (!conv) return;
+  const v = (x: string | null | undefined) => (x && String(x).trim()) || null;
+  const service   = v(extracted.service_needed);
+  // Only accept something that looks like a real phone (DDD + number) — the
+  // LLM sometimes returns placeholders like "não informado".
+  const phoneDigits = extracted.lead_phone ? String(extracted.lead_phone).replace(/\D/g, '') : '';
+  const leadPhone   = phoneDigits.length >= 10 ? phoneDigits : null;
 
-  const merged = [...(conv.transcript ?? []), ...newTurns];
-
-  // Merge extracted fields with existing values — never overwrite with null
-  const service           = extracted.service_needed   || conv.service;
-  const vehicle           = extracted.vehicle          || conv.vehicle;
-  const symptom           = extracted.symptom          || conv.symptom;
-  const urgency           = extracted.urgency          || conv.urgency;
-  const lead_name         = extracted.lead_name        || conv.lead_name;
-  const lead_phone        = extracted.lead_phone       || conv.lead_phone;
-  const preferred_slot    = extracted.preferred_slot   || conv.preferred_slot;
-  const customer_address  = extracted.customer_address || conv.customer_address;
-
-  const nowQualified = !!(service && lead_phone);
-  // owner_notified becomes false only when FIRST qualifying
-  const ownerNotified = (nowQualified && !wasQualifiedBefore)
-    ? false
-    : conv.owner_notified;
-
+  // Every SET expression reads the row being updated (c.*), so Postgres
+  // re-evaluates them against the latest version if another request
+  // updated the same conversation concurrently.
   await sql`
-    UPDATE conversations SET
-      transcript        = ${JSON.stringify(merged)}::jsonb,
-      turns             = ${merged.length},
-      service           = ${service},
-      vehicle           = ${vehicle},
-      symptom           = ${symptom},
-      urgency           = ${urgency},
-      lead_name         = ${lead_name},
-      lead_phone        = ${lead_phone},
-      preferred_slot    = ${preferred_slot},
-      customer_address  = ${customer_address},
-      qualified         = ${nowQualified},
-      owner_notified    = ${ownerNotified}
-    WHERE id = ${convId}
+    UPDATE conversations c SET
+      transcript       = COALESCE(c.transcript, '[]'::jsonb) || ${JSON.stringify(newTurns)}::jsonb,
+      turns            = jsonb_array_length(COALESCE(c.transcript, '[]'::jsonb) || ${JSON.stringify(newTurns)}::jsonb),
+      service          = COALESCE(${service},                        c.service),
+      vehicle          = COALESCE(${v(extracted.vehicle)},           c.vehicle),
+      symptom          = COALESCE(${v(extracted.symptom)},           c.symptom),
+      urgency          = COALESCE(${v(extracted.urgency)},           c.urgency),
+      lead_name        = COALESCE(${v(extracted.lead_name)},         c.lead_name),
+      lead_phone       = COALESCE(${leadPhone},                      c.lead_phone),
+      preferred_slot   = COALESCE(${v(extracted.preferred_slot)},    c.preferred_slot),
+      customer_address = COALESCE(${v(extracted.customer_address)},  c.customer_address),
+      qualified        = (COALESCE(${service}, c.service) IS NOT NULL
+                          AND COALESCE(${leadPhone}, c.lead_phone) IS NOT NULL),
+      owner_notified   = CASE
+                           WHEN NOT COALESCE(c.qualified, false)
+                                AND COALESCE(${service}, c.service) IS NOT NULL
+                                AND COALESCE(${leadPhone}, c.lead_phone) IS NOT NULL
+                           THEN false
+                           ELSE c.owner_notified
+                         END
+    WHERE c.id::text = ${convId}
   `;
 }
 
@@ -191,13 +208,21 @@ export async function getTenantConversations(
   return rows as unknown as ConversationRecord[];
 }
 
-export async function updateBookingStatus(
-  convId:  string,
-  status:  'requested' | 'confirmed' | 'no_show' | 'done',
-): Promise<void> {
-  await sql`
-    UPDATE conversations SET booking_status = ${status} WHERE id = ${convId}
+export const CONVERSATION_BOOKING_STATUSES = ['requested', 'confirmed', 'no_show', 'done'] as const;
+export type ConversationBookingStatus = typeof CONVERSATION_BOOKING_STATUSES[number];
+
+/** Updates a conversation's booking status. Returns false if it isn't this tenant's. */
+export async function updateConversationBookingStatus(
+  tenantId: string,
+  convId:   string,
+  status:   ConversationBookingStatus,
+): Promise<boolean> {
+  const rows = await sql`
+    UPDATE conversations SET booking_status = ${status}
+    WHERE id::text = ${convId} AND tenant_id = ${tenantId}
+    RETURNING id
   `;
+  return rows.length > 0;
 }
 
 export async function getDashboardStats(tenantId: string): Promise<{
@@ -210,7 +235,10 @@ export async function getDashboardStats(tenantId: string): Promise<{
     SELECT
       COUNT(*)::int                                                   AS total,
       COUNT(*) FILTER (WHERE qualified)::int                         AS qualified,
-      COUNT(*) FILTER (WHERE started_at::date = current_date)::int  AS today,
+      COUNT(*) FILTER (
+        WHERE (started_at AT TIME ZONE 'America/Sao_Paulo')::date
+            = (now()      AT TIME ZONE 'America/Sao_Paulo')::date
+      )::int                                                          AS today,
       COUNT(*) FILTER (
         WHERE qualified AND (booking_status IS NULL OR booking_status = 'requested')
       )::int                                                          AS pending_confirmation

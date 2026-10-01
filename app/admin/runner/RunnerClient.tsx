@@ -63,7 +63,11 @@ export default function RunnerClient() {
     checkConnection();
     loadSender();
     const t = setInterval(checkConnection, 5000);
-    return () => clearInterval(t);
+    return () => {
+      clearInterval(t);
+      esRef.current?.close(); // don't leak the log stream when leaving the page
+      esRef.current = null;
+    };
   }, []);
 
   async function loadSender() {
@@ -143,13 +147,19 @@ export default function RunnerClient() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!r.ok) { const e = await r.json(); setLogLines([`ERROR: ${e.error}`]); return; }
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
+        setLogLines([`ERROR: ${e.error}`]);
+        setJobStatus('error');
+        return;
+      }
       const { job_id } = await r.json();
       setActiveJob(job_id);
       streamLogs(job_id);
       setTimeout(refreshJobs, 1000);
-    } catch (e) {
-      setLogLines([`Não foi possível conectar ao servidor local. Inicie local_server.py primeiro.`]);
+    } catch {
+      setLogLines(['Não foi possível conectar ao servidor local. Inicie local_server.py primeiro.']);
+      setJobStatus('error');
     }
   }
 
@@ -158,15 +168,16 @@ export default function RunnerClient() {
     const es = new EventSource(`${LOCAL}/logs/${jobId}`);
     esRef.current = es;
     es.onmessage = (e) => {
-      const data = JSON.parse(e.data);
+      let data: { __done__?: boolean; status?: string; line?: string };
+      try { data = JSON.parse(e.data); } catch { return; }
       if (data.__done__) {
-        setJobStatus(data.status);
+        setJobStatus(data.status ?? 'done');
         es.close();
         esRef.current = null;
         refreshJobs();
       } else if (data.line) {
         setJobStatus(s => s === '' ? 'running' : s);
-        setLogLines(prev => [...prev, data.line]);
+        setLogLines(prev => [...prev, data.line as string]);
       }
     };
     es.onerror = () => {
@@ -178,8 +189,12 @@ export default function RunnerClient() {
 
   async function killJob() {
     if (!activeJob) return;
-    await fetch(`${LOCAL}/jobs/${activeJob}/kill`, { method: 'POST' });
-    setJobStatus('killed');
+    try {
+      const r = await fetch(`${LOCAL}/jobs/${activeJob}/kill`, { method: 'POST' });
+      if (r.ok) setJobStatus('killed');
+    } catch {
+      // server unreachable — leave status as is
+    }
   }
 
   const needsNiche  = selScript !== 'notify' && selScript !== 'billing';

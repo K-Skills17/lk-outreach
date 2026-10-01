@@ -1,4 +1,5 @@
 import { getAdminStats, type NumberRow } from '@/lib/admin';
+import AutoRefresh from './AutoRefresh';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,8 +106,11 @@ export default async function AdminDashboard() {
   const s = await getAdminStats();
 
   const activeContacts = s.contacted + s.in_followup + s.replied + s.call_booked;
+  // Prospects that replied (including those who moved on to a call or a win)
+  // over prospects ever contacted — not over raw message count.
+  const everReplied    = s.replied + s.call_booked + s.won;
   const viewRate       = pct(s.audit_views, s.audit_sent);
-  const replyRate      = pct(s.replied,     s.total_sent);
+  const replyRate      = pct(everReplied,   s.ever_contacted);
 
   return (
     <>
@@ -119,6 +123,7 @@ export default async function AdminDashboard() {
           Atualiza a cada 30s
         </span>
       </div>
+      <AutoRefresh seconds={30} />
       <div className="divider-gold" style={{ marginBottom: '1.25rem' }} />
 
       {/* Numbers */}
@@ -152,14 +157,14 @@ export default async function AdminDashboard() {
         <StatCard label="Msgs enviadas"  value={s.total_sent}  />
         <StatCard label="Audits enviados" value={s.audit_sent}  />
         <StatCard label="Audit views"    value={s.audit_views} sub={`taxa ${viewRate}`} />
-        <StatCard label="Responderam"    value={s.replied}     sub={`taxa ${replyRate}`} />
+        <StatCard label="Responderam"    value={everReplied}   sub={`taxa ${replyRate}`} />
         <StatCard label="Opted out"      value={s.opted_out}   />
       </div>
 
       {/* Pipeline */}
       <SectionTitle>Pipeline ativo</SectionTitle>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '0.75rem' }}>
-        <StatCard label="Em contato"     value={activeContacts} sub="contacted+followup" />
+        <StatCard label="Em contato"     value={activeContacts} sub="contato → call" />
         <StatCard label="Responderam"    value={s.replied}      />
         <StatCard label="Call agendada"  value={s.call_booked}  />
         <StatCard label="Ganhos"         value={s.won}          />

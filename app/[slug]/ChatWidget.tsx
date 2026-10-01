@@ -11,10 +11,13 @@ type Props = {
   source?:      string;
   whatsappLink?: string;
   phoneDisplay?: string;
+  emoji?:       string;
 };
 
+const MAX_MESSAGE_CHARS = 2000; // mirrors the /api/chat limit
+
 export default function ChatWidget({
-  slug, shopName, greeting, source, whatsappLink, phoneDisplay,
+  slug, shopName, greeting, source, whatsappLink, phoneDisplay, emoji = '💬',
 }: Props) {
   const [messages,   setMessages]   = useState<Message[]>([
     { role: 'assistant', content: greeting },
@@ -102,7 +105,7 @@ export default function ChatWidget({
           display:     'flex', alignItems: 'center', justifyContent: 'center',
           fontSize:    '1rem',
         }}>
-          🔧
+          {emoji}
         </div>
         <div>
           <p style={{ color: '#e8e8e8', fontSize: '0.82rem', fontWeight: 600, margin: 0 }}>
@@ -262,7 +265,7 @@ export default function ChatWidget({
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+          maxLength={MAX_MESSAGE_CHARS}
           disabled={loading || qualified}
           placeholder={qualified ? 'Pedido registrado.' : 'Digite sua mensagem…'}
           style={{

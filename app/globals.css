@@ -129,6 +129,9 @@ h1, h2, h3 {
   background: rgba(197, 163, 104, 0.07);
   color:      var(--text);
 }
+.admin-nav-link[aria-current="page"] {
+  color: var(--gold);
+}
 
 /* Callout */
 .callout {

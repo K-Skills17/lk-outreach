@@ -13,6 +13,7 @@ import {
   getOpeningTime,
   closesEarlyWeekdays,
   sundayClosed,
+  isDayClosed,
   fmtTime,
 } from '@/lib/audit';
 
@@ -163,7 +164,7 @@ function HoursSection({
             close &&
             ((isWeekday && close <= EARLY_THRESHOLD) ||
              (isSat     && close <= SAT_THRESHOLD));
-          const dayClosed = slots === null;
+          const dayClosed = isDayClosed(slots);
 
           return (
             <div key={key} className="hours-row">
