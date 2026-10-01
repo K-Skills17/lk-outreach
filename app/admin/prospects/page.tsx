@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { getProspects, getDistinctNiches } from '@/lib/admin';
+import { getProspects, getDistinctNiches, PROSPECTS_PAGE_SIZE } from '@/lib/admin';
+import { fmtDateShort as fmtDate } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,12 +24,6 @@ const STATUS_LABEL: Record<string, string> = {
   lost:        'Perdido',
   opted_out:   'Opt-out',
 };
-
-function fmtDate(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
-}
 
 function FilterLink({
   href, active, children,
@@ -71,7 +66,7 @@ export default async function ProspectsPage({
   const tier   = params.tier   || '';
   const status = params.status || '';
   const niche  = params.niche  || '';
-  const page   = Math.max(1, parseInt(params.page || '1', 10));
+  const page   = Math.max(1, parseInt(params.page || '1', 10) || 1); // NaN-safe
 
   const [{ rows, total }, niches] = await Promise.all([
     getProspects({
@@ -83,7 +78,7 @@ export default async function ProspectsPage({
     getDistinctNiches(),
   ]);
 
-  const totalPages = Math.ceil(total / 50);
+  const totalPages = Math.ceil(total / PROSPECTS_PAGE_SIZE);
 
   function buildUrl(overrides: Partial<SearchParams>): string {
     const p: Record<string, string> = {};
@@ -211,7 +206,7 @@ export default async function ProspectsPage({
                   </td>
                   <td style={{ padding: '0.55rem 0.65rem', textAlign: 'center' }}>
                     {p.audit_slug ? (
-                      <a href={`https://lk-outreach.vercel.app/d/${p.audit_slug}`} target="_blank" rel="noopener noreferrer" style={{
+                      <a href={`/d/${p.audit_slug}`} target="_blank" rel="noopener noreferrer" style={{
                         color: p.audit_viewed_at ? '#4caf7d' : '#c5a368',
                         fontSize: '0.72rem', textDecoration: 'none', fontWeight: 600,
                       }}>

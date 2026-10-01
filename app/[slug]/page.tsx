@@ -84,12 +84,12 @@ export default async function TenantLandingPage({ params, searchParams }: Props)
       </div>
 
       {/* Main content */}
-      <div style={{
+      <div data-layout="grid" style={{
         maxWidth:  '860px',
         margin:    '0 auto',
         padding:   '2rem 1.25rem',
         display:   'grid',
-        gridTemplateColumns: 'minmax(0,1fr) minmax(0,340px)',
+        gridTemplateColumns: tenant.bot_enabled ? 'minmax(0,1fr) minmax(0,340px)' : 'minmax(0,1fr)',
         gap:       '2rem',
         alignItems: 'start',
       }}>
@@ -212,7 +212,8 @@ export default async function TenantLandingPage({ params, searchParams }: Props)
           )}
         </div>
 
-        {/* Right column: chat */}
+        {/* Right column: chat (hidden while the tenant's bot is switched off) */}
+        {tenant.bot_enabled && (
         <div style={{ position: 'sticky', top: '1.5rem' }}>
           <p style={{
             fontSize:     '0.78rem',
@@ -231,11 +232,13 @@ export default async function TenantLandingPage({ params, searchParams }: Props)
             source={source}
             whatsappLink={whatsappLink ?? undefined}
             phoneDisplay={phoneDisplay ?? undefined}
+            emoji={niche.niche_emoji}
           />
         </div>
+        )}
       </div>
 
-      {/* Mobile chat note */}
+      {/* Single column on phones */}
       <style>{`
         @media (max-width: 640px) {
           [data-layout="grid"] {

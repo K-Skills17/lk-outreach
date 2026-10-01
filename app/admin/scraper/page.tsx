@@ -20,12 +20,16 @@ export default function ScraperPage() {
   const [lastAction,  setLastAction]  = useState<string | null>(null);
 
   async function load() {
-    const [f, n] = await Promise.all([
-      fetch('/api/admin/scraper').then(r => r.json()),
-      fetch('/api/admin/scraper/progress').then(r => r.json()),
-    ]);
-    setFlag(f);
-    setNiches(n.niches ?? []);
+    try {
+      const [f, n] = await Promise.all([
+        fetch('/api/admin/scraper'),
+        fetch('/api/admin/scraper/progress'),
+      ]);
+      if (f.ok) setFlag(await f.json());
+      if (n.ok) setNiches((await n.json()).niches ?? []);
+    } catch {
+      // leave previous state; page shows "verificando" until a load succeeds
+    }
   }
 
   useEffect(() => { load(); }, []);
@@ -38,8 +42,12 @@ export default function ScraperPage() {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ action }),
       });
+      if (!res.ok) {
+        setLastAction('Erro ao alterar o scraper. Tente novamente.');
+        return;
+      }
       const data = await res.json();
-      setFlag({ enabled: data.enabled, updated_at: new Date().toISOString() });
+      setFlag({ enabled: data.enabled, updated_at: data.updated_at ?? new Date().toISOString() });
       setLastAction(action === 'stop' ? 'Scraper parado. Será interrompido antes da próxima query.' : 'Scraper liberado.');
       setTimeout(() => setLastAction(null), 5000);
     } finally {

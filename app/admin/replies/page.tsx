@@ -1,5 +1,6 @@
 import { getReplyQueue } from '@/lib/admin';
 import ProspectActions from './ProspectActions';
+import { fmtDateTime as fmtDate } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,13 +22,6 @@ const STATUS_COLOR: Record<string, string> = {
   lost:        '#e05c5c',
   followup_2:  '#888',
 };
-
-function fmtDate(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-       + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
 
 export default async function RepliesPage() {
   const queue = await getReplyQueue();

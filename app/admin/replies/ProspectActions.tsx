@@ -30,40 +30,27 @@ export default function ProspectActions({ id, currentStatus, currentNotes }: Pro
   const [showNote, setShowNote] = useState(false);
   const [msg,     setMsg]     = useState('');
 
-  async function setStatus(status: string) {
+  async function patch(payload: { status?: string; notes?: string }, okMsg: string) {
     setLoading(true);
     setMsg('');
     try {
       const res = await fetch(`/api/admin/prospects/${id}`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ status }),
+        body:    JSON.stringify(payload),
       });
-      if (res.ok) {
-        setMsg('Salvo.');
-        router.refresh();
-      } else {
-        setMsg('Erro ao salvar.');
-      }
+      if (!res.ok) throw new Error();
+      setMsg(okMsg);
+      router.refresh();
+    } catch {
+      setMsg('Erro ao salvar.');
     } finally {
       setLoading(false);
     }
   }
 
-  async function saveNote() {
-    setLoading(true);
-    setMsg('');
-    try {
-      const res = await fetch(`/api/admin/prospects/${id}`, {
-        method:  'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ notes: note }),
-      });
-      setMsg(res.ok ? 'Nota salva.' : 'Erro.');
-    } finally {
-      setLoading(false);
-    }
-  }
+  const setStatus = (status: string) => patch({ status }, 'Salvo.');
+  const saveNote  = ()               => patch({ notes: note }, 'Nota salva.');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-start' }}>

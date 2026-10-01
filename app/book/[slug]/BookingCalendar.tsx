@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 type DayAvailability = { date: string; day_label: string; slots: string[] };
 
@@ -25,11 +25,6 @@ type BookingResult = {
   whatsapp:   string | null;
 };
 
-function formatDateBR(dateStr: string): string {
-  const [, mm, dd] = dateStr.split('-');
-  return `${dd}/${mm}`;
-}
-
 export default function BookingCalendar({
   slug, shopName, whatsappLink, prefillName, prefillPhone, prefillService, convId,
 }: Props) {
@@ -47,12 +42,15 @@ export default function BookingCalendar({
   const [submitError,   setSubmitError]  = useState<string | null>(null);
   const [booking,       setBooking]      = useState<BookingResult | null>(null);
 
-  useEffect(() => {
-    fetch(`/api/book/${slug}/slots`)
+  const loadSlots = useCallback(() => {
+    return fetch(`/api/book/${slug}/slots`)
       .then(r => r.json())
-      .then(data => { setDays(data.days ?? []); setLoadingSlots(false); })
-      .catch(() => { setSlotsError(true); setLoadingSlots(false); });
+      .then(data => { setDays(data.days ?? []); setSlotsError(false); })
+      .catch(() => setSlotsError(true))
+      .finally(() => setLoadingSlots(false));
   }, [slug]);
+
+  useEffect(() => { loadSlots(); }, [loadSlots]);
 
   async function confirmBooking() {
     if (!selectedDate || !selectedTime) return;
@@ -72,7 +70,19 @@ export default function BookingCalendar({
           conv_id:    convId         || null,
         }),
       });
-      if (res.status === 409) { setSubmitError('Este horário acabou de ser reservado. Escolha outro.'); return; }
+      if (res.status === 409) {
+        // Slot was taken (or passed) — refresh availability and send them back to pick again.
+        await loadSlots();
+        setSelectedTime(null);
+        setStep('date');
+        setSubmitError('Este horário acabou de ser reservado. Escolha outro.');
+        return;
+      }
+      if (res.status === 400) {
+        const data = await res.json().catch(() => ({}));
+        setSubmitError(data.error ?? 'Verifique os dados e tente novamente.');
+        return;
+      }
       if (!res.ok) throw new Error();
       const data = await res.json();
       setBooking(data);
@@ -141,11 +151,14 @@ export default function BookingCalendar({
       <p style={{ fontSize: '0.78rem', color: '#666', margin: '0 0 1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
         Escolha uma data
       </p>
+      {submitError && (
+        <p style={{ color: '#e05c5c', fontSize: '0.78rem', margin: '0 0 0.75rem' }}>{submitError}</p>
+      )}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
         {days.map(day => (
           <button
             key={day.date}
-            onClick={() => { setSelectedDate(day); setStep('time'); }}
+            onClick={() => { setSelectedDate(day); setSubmitError(null); setStep('time'); }}
             style={btn(false)}
           >
             {day.day_label}

@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTenantByPhone } from '@/lib/tenant';
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
-  const { phone } = body as { phone?: string };
+  const body  = await req.json().catch(() => ({}));
+  const phone = typeof body?.phone === 'string' ? body.phone.trim() : '';
 
-  if (!phone?.trim()) {
+  if (!phone) {
     return NextResponse.json({ error: 'Telefone obrigatório' }, { status: 400 });
   }
 

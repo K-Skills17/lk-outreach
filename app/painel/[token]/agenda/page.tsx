@@ -1,7 +1,8 @@
-import { notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { getTenantByToken } from '@/lib/tenant';
 import { getUpcomingBookings, getAvailabilitySlots, getSlotBlocks } from '@/lib/calendar';
-import AgendaClient from './AgendaClient';
+import AvailabilityEditor from '@/app/components/AvailabilityEditor';
+import { fmtIsoDay, waLink } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ const STATUS_COLOR: Record<string, string> = {
 export default async function AgendaPage({ params }: Props) {
   const { token } = await params;
   const tenant    = await getTenantByToken(token);
-  if (!tenant) notFound();
+  if (!tenant) redirect('/painel?expired=1');
 
   const [bookings, slots, blocks] = await Promise.all([
     getUpcomingBookings(tenant.id, 60),
@@ -86,17 +87,16 @@ export default async function AgendaPage({ params }: Props) {
                 </thead>
                 <tbody>
                   {bookings.map(b => {
-                    const [, mm, dd] = b.slot_date.split('-');
                     return (
                       <tr key={b.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                         <td style={{ padding: '0.6rem 0.85rem', color: '#e8e8e8', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                          {dd}/{mm}
+                          {fmtIsoDay(b.slot_date)}
                         </td>
                         <td style={{ padding: '0.6rem 0.85rem', color: '#c5a368', fontWeight: 600 }}>{b.start_time}</td>
                         <td style={{ padding: '0.6rem 0.85rem', color: '#e8e8e8' }}>{b.lead_name ?? '—'}</td>
                         <td style={{ padding: '0.6rem 0.85rem' }}>
                           {b.lead_phone ? (
-                            <a href={`https://wa.me/55${b.lead_phone}`} target="_blank" rel="noopener noreferrer"
+                            <a href={waLink(b.lead_phone)} target="_blank" rel="noopener noreferrer"
                               style={{ color: '#25D366', textDecoration: 'none' }}>
                               {b.lead_phone}
                             </a>
@@ -124,10 +124,15 @@ export default async function AgendaPage({ params }: Props) {
         </section>
 
         {/* Availability editor — client component */}
-        <AgendaClient
-          token={token}
+        <AvailabilityEditor
+          availabilityUrl={`/api/painel/${token}/availability`}
+          blocksUrl={`/api/painel/${token}/blocks`}
           initialSlots={slots}
           initialBlocks={blocks}
+          dayCols={[1, 2, 3, 4, 5, 6]}
+          firstTime="07:00"
+          lastTime="19:00"
+          durationMin={60}
         />
 
       </div>

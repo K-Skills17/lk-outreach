@@ -1,17 +1,10 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { requireAdmin } from '@/lib/auth';
 import sql from '@/lib/db';
 
-function isAuthed(cookie: string | undefined): boolean {
-  const secret = process.env.ADMIN_SECRET;
-  return !!secret && cookie === secret;
-}
-
 export async function GET() {
-  const jar = await cookies();
-  if (!isAuthed(jar.get('admin_session')?.value)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const [dbCampaigns, stats] = await Promise.all([
     sql`SELECT * FROM campaigns ORDER BY created_at DESC`,
@@ -66,10 +59,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const jar = await cookies();
-  if (!isAuthed(jar.get('admin_session')?.value)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   let body: {
     slug: string; name: string; niche: string; cap: number;
@@ -91,14 +82,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Slug deve conter apenas letras minúsculas, números e hífens.' }, { status: 400 });
   }
 
+  const capNum      = cap       == null ? 10  : Number(cap);
+  const maxCharsNum = max_chars == null ? 360 : Number(max_chars);
+  if (!Number.isInteger(capNum) || capNum < 1) {
+    return NextResponse.json({ error: 'Cap deve ser um número inteiro positivo.' }, { status: 400 });
+  }
+  if (!Number.isInteger(maxCharsNum) || maxCharsNum < 1) {
+    return NextResponse.json({ error: 'Máx. caracteres deve ser um número inteiro positivo.' }, { status: 400 });
+  }
+
   try {
     await sql`
       INSERT INTO campaigns (slug, name, niche, cap, offer, p1_message, p2_message, p3_message, max_chars)
       VALUES (
-        ${slug}, ${name}, ${niche}, ${cap ?? 10},
+        ${slug}, ${name}, ${niche}, ${capNum},
         ${offer ?? null}, ${p1_message},
         ${p2_message ?? null}, ${p3_message ?? null},
-        ${max_chars ?? 360}
+        ${maxCharsNum}
       )
     `;
     return NextResponse.json({ ok: true, slug });
@@ -112,10 +112,8 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const jar = await cookies();
-  if (!isAuthed(jar.get('admin_session')?.value)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
   const slug = searchParams.get('slug');

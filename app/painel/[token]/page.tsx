@@ -1,6 +1,7 @@
-import { notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { getTenantByToken, getTenantConversations, getDashboardStats } from '@/lib/tenant';
 import { getNicheConfig } from '@/lib/niches';
+import { fmtDateTime, fmtDayMonth, waLink } from '@/lib/format';
 import DashboardClient from './DashboardClient';
 import TokenRemember from './TokenRemember';
 import PainelLogout from './PainelLogout';
@@ -29,7 +30,9 @@ export default async function PainelPage({ params }: Props) {
   const { token } = await params;
 
   const tenant = await getTenantByToken(token);
-  if (!tenant) notFound();
+  // Stale/invalid token (e.g. remembered in localStorage) → back to login,
+  // which clears it instead of bouncing here again.
+  if (!tenant) redirect('/painel?expired=1');
 
   const niche = getNicheConfig(tenant.niche);
 
@@ -38,7 +41,8 @@ export default async function PainelPage({ params }: Props) {
     getTenantConversations(tenant.id, 50),
   ]);
 
-  const qualified = conversations.filter(c => c.qualified);
+  const qualified   = conversations.filter(c => c.qualified);
+  const unqualified = conversations.filter(c => !c.qualified);
 
   return (
     <div style={{
@@ -182,9 +186,7 @@ export default async function PainelPage({ params }: Props) {
                   {qualified.map(conv => (
                     <tr key={conv.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                       <td style={{ padding: '0.65rem 0.85rem', color: '#888', whiteSpace: 'nowrap' }}>
-                        {new Date(conv.started_at).toLocaleDateString('pt-BR', {
-                          day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-                        })}
+                        {fmtDateTime(conv.started_at)}
                       </td>
                       <td style={{ padding: '0.65rem 0.85rem', color: '#e8e8e8' }}>
                         {conv.lead_name ?? '—'}
@@ -192,7 +194,7 @@ export default async function PainelPage({ params }: Props) {
                       <td style={{ padding: '0.65rem 0.85rem', whiteSpace: 'nowrap' }}>
                         {conv.lead_phone ? (
                           <a
-                            href={`https://wa.me/55${conv.lead_phone}`}
+                            href={waLink(conv.lead_phone)}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ color: '#25D366', textDecoration: 'none' }}
@@ -230,7 +232,7 @@ export default async function PainelPage({ params }: Props) {
         </section>
 
         {/* Non-qualified conversations */}
-        {conversations.filter(c => !c.qualified).length > 0 && (
+        {unqualified.length > 0 && (
           <details style={{
             background:   '#0f0f0f',
             border:       '1px solid rgba(255,255,255,0.05)',
@@ -238,10 +240,10 @@ export default async function PainelPage({ params }: Props) {
             padding:      '0.75rem 1rem',
           }}>
             <summary style={{ cursor: 'pointer', fontSize: '0.78rem', color: '#555' }}>
-              Conversas sem pedido ({conversations.filter(c => !c.qualified).length})
+              Conversas sem pedido ({unqualified.length})
             </summary>
             <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              {conversations.filter(c => !c.qualified).map(conv => (
+              {unqualified.map(conv => (
                 <div key={conv.id} style={{
                   fontSize:  '0.78rem',
                   color:     '#666',
@@ -249,7 +251,7 @@ export default async function PainelPage({ params }: Props) {
                   gap:       '1rem',
                 }}>
                   <span>
-                    {new Date(conv.started_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                    {fmtDayMonth(conv.started_at)}
                   </span>
                   <span>{conv.turns} mensagens</span>
                   {conv.source && <span>via {conv.source}</span>}

@@ -10,11 +10,17 @@ export default function PainelLogin() {
   const [error,   setError]   = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
 
-  // Try localStorage first — skip login entirely if token exists
+  // Try localStorage first — skip login entirely if token exists.
+  // ?expired=1 means the saved token was rejected: forget it and show the form.
   useEffect(() => {
-    const saved = localStorage.getItem('lk_painel_token');
+    const expired = new URLSearchParams(window.location.search).has('expired');
+    if (expired) {
+      localStorage.removeItem('lk_painel_token');
+      setError('Sessão expirada. Digite seu telefone novamente.');
+    }
+    const saved = expired ? null : localStorage.getItem('lk_painel_token');
     if (saved) {
-      router.replace(`/painel/${saved}`);
+      router.replace(`/painel/${encodeURIComponent(saved)}`);
     } else {
       setChecked(true);
     }
@@ -39,7 +45,7 @@ export default function PainelLogin() {
       if (!res.ok) throw new Error();
       const { token } = await res.json();
       localStorage.setItem('lk_painel_token', token);
-      router.replace(`/painel/${token}`);
+      router.replace(`/painel/${encodeURIComponent(token)}`);
     } catch {
       setError('Erro ao acessar. Tente novamente.');
     } finally {

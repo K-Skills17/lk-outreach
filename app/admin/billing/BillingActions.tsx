@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 type Props = {
   tenantId:      string;
@@ -16,6 +17,7 @@ const STATUS_CYCLE: Record<string, string> = {
 };
 
 export default function BillingActions({ tenantId, monthlyStatus, botEnabled }: Props) {
+  const router = useRouter();
   const [status,  setStatus]  = useState(monthlyStatus);
   const [bot,     setBot]     = useState(botEnabled);
   const [saving,  setSaving]  = useState(false);
@@ -33,6 +35,7 @@ export default function BillingActions({ tenantId, monthlyStatus, botEnabled }: 
       if (!res.ok) throw new Error('Erro ao salvar');
       if (payload.monthly_status !== undefined) setStatus(payload.monthly_status);
       if (payload.bot_enabled    !== undefined) setBot(payload.bot_enabled);
+      router.refresh(); // keep the KPI cards / status column in sync
     } catch {
       setError('Erro. Tente novamente.');
     } finally {

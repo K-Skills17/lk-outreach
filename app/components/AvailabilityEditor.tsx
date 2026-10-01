@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { fmtIsoDay } from '@/lib/format';
+
+// Weekly availability grid + blocked-dates list. Shared by the tenant painel
+// (/painel/[token]/agenda) and the admin's own agenda (/admin/agenda).
 
 type SlotRow = {
-  id:           string;
   day_of_week:  number;
   start_time:   string;
-  duration_min: number;
-  max_bookings: number;
 };
 
 type BlockRow = {
@@ -17,30 +18,44 @@ type BlockRow = {
 };
 
 type Props = {
-  initialSlots:  SlotRow[];
-  initialBlocks: BlockRow[];
+  availabilityUrl: string;
+  blocksUrl:       string;
+  initialSlots:    SlotRow[];
+  initialBlocks:   BlockRow[];
+  dayCols:         number[];  // 0=Sun … 6=Sat
+  firstTime:       string;    // "HH:MM" — first row of the grid
+  lastTime:        string;    // "HH:MM" — last row of the grid (inclusive)
+  durationMin:     number;
+  title?:          string;
+  hint?:           string;
 };
 
 const DAY_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-const DAY_COLS  = [1, 2, 3, 4, 5]; // Mon–Fri (discovery calls)
 
-const HOURS: string[] = [];
-for (let h = 8; h <= 18; h++) {
-  HOURS.push(`${String(h).padStart(2, '0')}:00`);
-  HOURS.push(`${String(h).padStart(2, '0')}:30`);
+/** Every half hour from `first` to `last`, inclusive. */
+function halfHours(first: string, last: string): string[] {
+  const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  const out: string[] = [];
+  for (let m = toMin(first); m <= toMin(last); m += 30) {
+    out.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
+  }
+  return out;
 }
 
-function slotsToSet(slots: SlotRow[]): Set<string> {
-  return new Set(slots.map(s => `${s.day_of_week}:${s.start_time.slice(0, 5)}`));
-}
+// Keys are "<dow>|<HH:MM>" — a separator that can't appear in the time itself.
+const cellKey = (dow: number, time: string) => `${dow}|${time}`;
 
-function formatDateBR(dateStr: string): string {
-  const [, mm, dd] = dateStr.split('-');
-  return `${dd}/${mm}`;
-}
+export default function AvailabilityEditor({
+  availabilityUrl, blocksUrl, initialSlots, initialBlocks,
+  dayCols, firstTime, lastTime, durationMin,
+  title = 'Horários disponíveis',
+  hint  = 'Clique nas células para ativar/desativar horários. Dourado = disponível.',
+}: Props) {
+  const hours = halfHours(firstTime, lastTime);
 
-export default function AdminAgendaClient({ initialSlots, initialBlocks }: Props) {
-  const [schedule, setSchedule] = useState<Set<string>>(slotsToSet(initialSlots));
+  const [schedule, setSchedule] = useState<Set<string>>(
+    () => new Set(initialSlots.map(s => cellKey(s.day_of_week, s.start_time.slice(0, 5)))),
+  );
   const [saving,   setSaving]   = useState(false);
   const [saveMsg,  setSaveMsg]  = useState<string | null>(null);
 
@@ -51,7 +66,7 @@ export default function AdminAgendaClient({ initialSlots, initialBlocks }: Props
   const [blockErr,    setBlockErr]    = useState<string | null>(null);
 
   function toggleCell(dow: number, time: string) {
-    const key = `${dow}:${time}`;
+    const key = cellKey(dow, time);
     setSchedule(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -65,12 +80,10 @@ export default function AdminAgendaClient({ initialSlots, initialBlocks }: Props
     setSaveMsg(null);
     try {
       const slots = Array.from(schedule).map(key => {
-        const firstColon = key.indexOf(':');
-        const dow  = key.slice(0, firstColon);
-        const time = key.slice(firstColon + 1); // already "HH:MM"
-        return { day_of_week: Number(dow), start_time: time, duration_min: 15, max_bookings: 1 };
+        const [dow, time] = key.split('|');
+        return { day_of_week: Number(dow), start_time: time, duration_min: durationMin, max_bookings: 1 };
       });
-      const res = await fetch('/api/admin/agenda/availability', {
+      const res = await fetch(availabilityUrl, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ slots }),
@@ -90,7 +103,7 @@ export default function AdminAgendaClient({ initialSlots, initialBlocks }: Props
     setBlockSaving(true);
     setBlockErr(null);
     try {
-      const res = await fetch('/api/admin/agenda/blocks', {
+      const res = await fetch(blocksUrl, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ block_date: blockDate, reason: blockReason || undefined }),
@@ -98,7 +111,7 @@ export default function AdminAgendaClient({ initialSlots, initialBlocks }: Props
       if (res.status === 409) { setBlockErr('Data já bloqueada.'); return; }
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setBlocks(prev => [...prev, { id: data.id ?? crypto.randomUUID(), block_date: blockDate, reason: blockReason || null }]);
+      setBlocks(prev => [...prev, { id: data.id, block_date: blockDate, reason: blockReason || null }]);
       setBlockDate('');
       setBlockReason('');
     } catch {
@@ -109,15 +122,17 @@ export default function AdminAgendaClient({ initialSlots, initialBlocks }: Props
   }
 
   async function removeBlock(blockId: string) {
+    setBlockErr(null);
     try {
-      await fetch('/api/admin/agenda/blocks', {
+      const res = await fetch(blocksUrl, {
         method:  'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ block_id: blockId }),
       });
+      if (!res.ok) throw new Error();
       setBlocks(prev => prev.filter(b => b.id !== blockId));
     } catch {
-      // silently ignore
+      setBlockErr('Erro ao remover bloqueio.');
     }
   }
 
@@ -126,7 +141,6 @@ export default function AdminAgendaClient({ initialSlots, initialBlocks }: Props
     border:       '1px solid rgba(197,163,104,0.1)',
     borderRadius: '12px',
     overflow:     'hidden',
-    marginBottom: '1.5rem',
   };
 
   const sectionHeader: React.CSSProperties = {
@@ -137,12 +151,17 @@ export default function AdminAgendaClient({ initialSlots, initialBlocks }: Props
     alignItems:     'center',
   };
 
+  // Only count slots that are visible in this grid.
+  const visibleCount = dayCols.reduce(
+    (n, dow) => n + hours.filter(t => schedule.has(cellKey(dow, t))).length, 0,
+  );
+
   return (
     <>
       {/* ── Weekly schedule grid ── */}
       <section style={card}>
         <div style={sectionHeader}>
-          <h2 style={{ fontSize: '0.88rem', fontWeight: 600, margin: 0 }}>Horários disponíveis para conversa</h2>
+          <h2 style={{ fontSize: '0.88rem', fontWeight: 600, margin: 0 }}>{title}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             {saveMsg && (
               <span style={{ fontSize: '0.75rem', color: saveMsg.startsWith('Erro') ? '#e05c5c' : '#4caf7d' }}>
@@ -169,15 +188,13 @@ export default function AdminAgendaClient({ initialSlots, initialBlocks }: Props
         </div>
 
         <div style={{ padding: '1rem 1.25rem', overflowX: 'auto' }}>
-          <p style={{ fontSize: '0.72rem', color: '#555', margin: '0 0 0.85rem' }}>
-            Clique para ativar/desativar. Dourado = disponível. Slots de 15 min (discovery call).
-          </p>
+          <p style={{ fontSize: '0.72rem', color: '#555', margin: '0 0 0.85rem' }}>{hint}</p>
 
-          <table style={{ borderCollapse: 'collapse', fontSize: '0.75rem', minWidth: '300px' }}>
+          <table style={{ borderCollapse: 'collapse', fontSize: '0.75rem', minWidth: `${80 + dayCols.length * 52}px` }}>
             <thead>
               <tr>
                 <th style={{ width: '48px', padding: '0.3rem 0.5rem', color: '#444', fontWeight: 500 }}></th>
-                {DAY_COLS.map(dow => (
+                {dayCols.map(dow => (
                   <th key={dow} style={{ padding: '0.3rem 0.4rem', color: '#888', fontWeight: 600, textAlign: 'center', minWidth: '52px' }}>
                     {DAY_NAMES[dow]}
                   </th>
@@ -185,18 +202,19 @@ export default function AdminAgendaClient({ initialSlots, initialBlocks }: Props
               </tr>
             </thead>
             <tbody>
-              {HOURS.map(time => (
+              {hours.map(time => (
                 <tr key={time}>
                   <td style={{ padding: '0.15rem 0.5rem 0.15rem 0', color: '#444', fontSize: '0.7rem', whiteSpace: 'nowrap', textAlign: 'right' }}>
                     {time}
                   </td>
-                  {DAY_COLS.map(dow => {
-                    const active = schedule.has(`${dow}:${time}`);
+                  {dayCols.map(dow => {
+                    const active = schedule.has(cellKey(dow, time));
                     return (
                       <td key={dow} style={{ padding: '0.15rem 0.2rem', textAlign: 'center' }}>
                         <button
                           onClick={() => toggleCell(dow, time)}
                           title={`${DAY_NAMES[dow]} ${time}`}
+                          aria-pressed={active}
                           style={{
                             width:        '44px',
                             height:       '24px',
@@ -216,7 +234,7 @@ export default function AdminAgendaClient({ initialSlots, initialBlocks }: Props
           </table>
 
           <p style={{ fontSize: '0.68rem', color: '#444', margin: '0.75rem 0 0' }}>
-            {schedule.size} horário{schedule.size !== 1 ? 's' : ''} selecionado{schedule.size !== 1 ? 's' : ''} · Duração: 15 min
+            {visibleCount} horário{visibleCount !== 1 ? 's' : ''} selecionado{visibleCount !== 1 ? 's' : ''} · Duração: {durationMin} min
           </p>
         </div>
       </section>
@@ -289,7 +307,7 @@ export default function AdminAgendaClient({ initialSlots, initialBlocks }: Props
                   }}>
                     <div>
                       <span style={{ color: '#e05c5c', fontWeight: 700, fontSize: '0.82rem' }}>
-                        {formatDateBR(b.block_date)}
+                        {fmtIsoDay(b.block_date)}
                       </span>
                       {b.reason && (
                         <span style={{ color: '#555', fontSize: '0.75rem', marginLeft: '0.5rem' }}>

@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { requireAdmin } from '@/lib/auth';
 import { updateTenantBilling } from '@/lib/admin';
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  // Auth
-  const jar    = await cookies();
-  const cookie = jar.get('admin_session')?.value;
-  const secret = process.env.ADMIN_SECRET;
-  if (!secret || cookie !== secret) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { id } = await params;
   const body   = await req.json().catch(() => ({}));

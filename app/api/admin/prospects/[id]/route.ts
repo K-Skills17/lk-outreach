@@ -1,19 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/auth';
 import { updateProspect } from '@/lib/admin';
-
-function isAuthed(req: NextRequest): boolean {
-  const cookie = req.cookies.get('admin_session')?.value;
-  const secret = process.env.ADMIN_SECRET;
-  return !!(secret && cookie && cookie === secret);
-}
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (!isAuthed(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { id } = await params;
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });

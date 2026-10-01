@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantByToken } from '@/lib/tenant';
-import { getSlotBlocks, addSlotBlock, removeSlotBlock } from '@/lib/calendar';
+import { getSlotBlocks, addSlotBlock, removeSlotBlock, isValidDate } from '@/lib/calendar';
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ token: string }> },
-) {
+type Ctx = { params: Promise<{ token: string }> };
+
+export async function GET(_req: NextRequest, { params }: Ctx) {
   const { token } = await params;
   const tenant    = await getTenantByToken(token);
   if (!tenant) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -14,10 +13,7 @@ export async function GET(
   return NextResponse.json({ blocks });
 }
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ token: string }> },
-) {
+export async function POST(req: NextRequest, { params }: Ctx) {
   const { token } = await params;
   const tenant    = await getTenantByToken(token);
   if (!tenant) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -25,7 +21,7 @@ export async function POST(
   const body = await req.json().catch(() => ({}));
   const { block_date, reason } = body as { block_date?: string; reason?: string };
 
-  if (!block_date || !/^\d{4}-\d{2}-\d{2}$/.test(block_date)) {
+  if (!isValidDate(block_date)) {
     return NextResponse.json({ error: 'block_date required (YYYY-MM-DD)' }, { status: 400 });
   }
 
@@ -34,10 +30,7 @@ export async function POST(
   return NextResponse.json({ ok: true, id });
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ token: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: Ctx) {
   const { token } = await params;
   const tenant    = await getTenantByToken(token);
   if (!tenant) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -1,5 +1,6 @@
 import { getBillingTenants } from '@/lib/admin';
 import BillingActions from './BillingActions';
+import { fmtDate, waLink } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,8 +46,8 @@ export default async function BillingPage() {
   };
 
   const mrr = tenants
-    .filter(t => t.monthly_status === 'paid' && t.price_brl)
-    .reduce((sum, t) => sum + (t.price_brl ?? 0), 0);
+    .filter(t => t.monthly_status === 'paid')
+    .reduce((sum, t) => sum + (Number(t.price_brl) || 0), 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -145,7 +146,7 @@ export default async function BillingPage() {
                       <td style={{ padding: '0.6rem 0.85rem', whiteSpace: 'nowrap' }}>
                         {t.owner_phone ? (
                           <a
-                            href={`https://wa.me/55${t.owner_phone}`}
+                            href={waLink(t.owner_phone)}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ color: '#25D366', textDecoration: 'none' }}
@@ -155,9 +156,7 @@ export default async function BillingPage() {
                         ) : '—'}
                       </td>
                       <td style={{ padding: '0.6rem 0.85rem', color: '#888', whiteSpace: 'nowrap' }}>
-                        {t.go_live_at
-                          ? new Date(t.go_live_at).toLocaleDateString('pt-BR')
-                          : '—'}
+                        {fmtDate(t.go_live_at)}
                       </td>
                       <td style={{ padding: '0.6rem 0.85rem', whiteSpace: 'nowrap' }}>
                         <span style={{ color: stage.color, fontWeight: 600 }}>
