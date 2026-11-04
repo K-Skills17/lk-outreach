@@ -27,7 +27,7 @@ type SenderFlag = { enabled: boolean; updated_at: string | null };
 
 export default function RunnerClient() {
   const [connected, setConnected] = useState<boolean | null>(null);
-  const [niches,    setNiches]    = useState<string[]>([]);
+  const niches = ['odontologia-implantes'];
   const [jobs,      setJobs]      = useState<JobSummary[]>([]);
 
   // Sender kill switch
@@ -108,7 +108,7 @@ export default function RunnerClient() {
       if (!r.ok) throw new Error();
       const d = await r.json();
       setConnected(true);
-      if (d.niches?.length) setNiches(d.niches);
+      // niches locked to dental only
       refreshJobs();
     } catch {
       setConnected(false);
@@ -275,7 +275,7 @@ export default function RunnerClient() {
             <div>
               <label style={{ display: 'block', fontSize: '0.65rem', color: '#555', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}>Nicho</label>
               <select value={selNiche} onChange={e => setSelNiche(e.target.value)} style={selectStyle}>
-                {(niches.length ? niches : ['odontologia-implantes']).map(n => (
+                {niches.map(n => (
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>
