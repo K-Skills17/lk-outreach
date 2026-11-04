@@ -105,9 +105,45 @@ export default async function ProspectsPage({
         <h1 style={{ color: '#e8e8e8', fontWeight: 700, fontSize: '1.15rem', margin: 0 }}>
           Prospectos
         </h1>
-        <span style={{ color: '#555', fontSize: '0.72rem' }}>
-          {total.toLocaleString('pt-BR')} registros
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ color: '#555', fontSize: '0.72rem' }}>
+            {total.toLocaleString('pt-BR')} registros
+          </span>
+          <a
+            href={`/api/admin/prospects/export?exclude=odontologia-implantes${tier ? `&tier=${tier}` : ''}${status ? `&status=${status}` : ''}`}
+            style={{
+              display: 'inline-block',
+              padding: '0.25rem 0.65rem',
+              borderRadius: '5px',
+              background: 'rgba(197,163,104,0.08)',
+              border: '1px solid rgba(197,163,104,0.25)',
+              color: '#c5a368',
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            &#8595; Exportar nao-dentais
+          </a>
+          <a
+            href={`/api/admin/prospects/export?${niche ? `niche=${niche}&` : ''}${tier ? `tier=${tier}&` : ''}${status ? `status=${status}&` : ''}`.replace(/&$/, '')}
+            style={{
+              display: 'inline-block',
+              padding: '0.25rem 0.65rem',
+              borderRadius: '5px',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid #333',
+              color: '#888',
+              fontSize: '0.72rem',
+              fontWeight: 400,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            &#8595; CSV (filtro atual)
+          </a>
+        </div>
       </div>
       <div className="divider-gold" style={{ marginBottom: '1rem' }} />
 

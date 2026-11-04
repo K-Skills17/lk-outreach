@@ -199,10 +199,10 @@ export default function ScraperPage() {
           <h3 style={{ fontSize: '0.78rem', fontWeight: 600, color: '#888', margin: '0 0 0.75rem' }}>Iniciar scrape</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             {[
-              ['Scrape completo de um nicho', 'python batch_scrape.py --niche moveis-planejados'],
-              ['Cidades específicas', 'python batch_scrape.py --niche moveis-planejados --cities "São Paulo,Campinas"'],
-              ['Limitar resultados por query', 'python batch_scrape.py --niche moveis-planejados --max-per-query 30'],
-              ['Dry run (sem gravar no DB)', 'python batch_scrape.py --niche moveis-planejados --dry-run'],
+              ['Scrape completo de um nicho', 'python batch_scrape.py --niche odontologia-implantes'],
+              ['Cidades específicas', 'python batch_scrape.py --niche odontologia-implantes --cities "São Paulo,Campinas"'],
+              ['Limitar resultados por query', 'python batch_scrape.py --niche odontologia-implantes --max-per-query 30'],
+              ['Dry run (sem gravar no DB)', 'python batch_scrape.py --niche odontologia-implantes --dry-run'],
             ].map(([label, cmd]) => (
               <div key={cmd} style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
                 <span style={{ fontSize: '0.68rem', color: '#444' }}>{label}</span>

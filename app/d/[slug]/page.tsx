@@ -314,14 +314,14 @@ function PresenceSection({
 // ── What system does ──
 
 const SYSTEM_BULLETS: Record<string, string[]> = {
-  oficinas: [
-    'Responde clientes no WhatsApp fora do horário da oficina',
-    'Pergunta veículo, problema e urgência antes de repassar',
-    'Avisa o dono em tempo real quando um cliente qualificado entra',
-    'Aparece para quem pesquisa no Google Maps à noite e no domingo',
+  'odontologia-implantes': [
+    'Responde pacientes no WhatsApp fora do horário da clínica',
+    'Qualifica o interesse (implante, faceta, clareamento, etc.) antes de repassar',
+    'Avisa o dentista em tempo real quando um paciente qualificado entra',
+    'Aparece para quem pesquisa no Google Maps à noite e no fim de semana',
   ],
   default: [
-    'Responde clientes no WhatsApp fora do horário comercial',
+    'Responde pacientes no WhatsApp fora do horário da clínica',
     'Qualifica o interesse antes de repassar para você',
     'Avisa em tempo real quando um lead qualificado entra',
     'Aumenta o alcance no Google sem esforço extra',

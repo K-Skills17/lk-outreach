@@ -37,7 +37,7 @@ type FormState = {
 };
 
 const EMPTY_FORM: FormState = {
-  name: '', slug: '', niche: 'moveis-planejados', cap: '10',
+  name: '', slug: '', niche: 'odontologia-implantes', cap: '10',
   offer: '', p1_message: '', p2_message: '', p3_message: '', max_chars: '360',
 };
 

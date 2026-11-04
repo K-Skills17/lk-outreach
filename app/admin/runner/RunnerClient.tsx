@@ -36,7 +36,7 @@ export default function RunnerClient() {
 
   // Form state
   const [selScript,  setSelScript]  = useState('outreach');
-  const [selNiche,   setSelNiche]   = useState('oficinas');
+  const [selNiche,   setSelNiche]   = useState('odontologia-implantes');
   const [selNumber,  setSelNumber]  = useState('');
   const [dryRun,     setDryRun]     = useState(false);
   const [phase,      setPhase]      = useState<string>('');
