@@ -132,6 +132,8 @@ export default function CampaignsPage() {
   const [saving, setSaving]       = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm]           = useState<FormState>(EMPTY_FORM);
+  const [sender, setSender]       = useState<{ enabled: boolean } | null>(null);
+  const [senderActing, setSenderActing] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -143,7 +145,23 @@ export default function CampaignsPage() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadSender(); }, []);
+
+  async function loadSender() {
+    const res = await fetch('/api/admin/sender');
+    if (res.ok) setSender(await res.json());
+  }
+
+  async function toggleSender(action: 'stop' | 'start') {
+    setSenderActing(true);
+    try {
+      const res = await fetch('/api/admin/sender', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) setSender(await res.json());
+    } finally { setSenderActing(false); }
+  }
 
   function setField(key: keyof FormState, value: string) {
     setForm(f => ({
@@ -207,7 +225,21 @@ export default function CampaignsPage() {
             Campanhas usam mensagens personalizadas em vez do template padrÃ£o do nicho.
           </p>
         </div>
-        {!showForm && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {sender !== null && (
+            sender.enabled ? (
+              <button onClick={() => toggleSender('stop')} disabled={senderActing} style={{ background: 'rgba(224,92,92,0.08)', border: '1px solid rgba(224,92,92,0.25)', borderRadius: '7px', padding: '0.4rem 0.9rem', color: senderActing ? '#444' : '#e05c5c', fontSize: '0.78rem', fontWeight: 700, cursor: senderActing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#4caf7d', display: 'inline-block' }} />
+                {senderActing ? 'Parando…' : 'Outreach ativo — Parar'}
+              </button>
+            ) : (
+              <button onClick={() => toggleSender('start')} disabled={senderActing} style={{ background: 'rgba(76,175,125,0.08)', border: '1px solid rgba(76,175,125,0.25)', borderRadius: '7px', padding: '0.4rem 0.9rem', color: senderActing ? '#444' : '#4caf7d', fontSize: '0.78rem', fontWeight: 700, cursor: senderActing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#e05c5c', display: 'inline-block' }} />
+                {senderActing ? 'Liberando…' : 'Outreach pausado — Liberar'}
+              </button>
+            )
+          )}
+          {!showForm && (
           <button
             onClick={() => { setShowForm(true); setFormError(null); }}
             style={{
@@ -224,7 +256,8 @@ export default function CampaignsPage() {
           >
             + Nova Campanha
           </button>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Create form */}

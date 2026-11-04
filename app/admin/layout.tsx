@@ -15,7 +15,6 @@ const NAV = [
   { href: '/admin/billing',     label: 'Cobrança' },
   { href: '/admin/agenda',      label: 'Agenda' },
   { href: '/admin/scraper',     label: 'Scraper' },
-  { href: '/admin/runner',      label: 'Runner' },
   { href: '/admin/config',      label: 'Configurar' },
 ];
 
