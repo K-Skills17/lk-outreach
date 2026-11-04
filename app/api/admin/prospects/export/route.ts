@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     WHERE 1=1
       AND (${niche}  = '' OR niche  = ${niche})
       AND (${tier}   = '' OR tier   = ${tier})
-      AND (${status} = '' OR status = ${status})
+      AND (${status} = '' OR status::text = ${status})
       AND (${exclude} = '' OR niche != ${exclude})
     ORDER BY created_at DESC
   `;
