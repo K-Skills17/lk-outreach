@@ -275,7 +275,7 @@ export default function RunnerClient() {
             <div>
               <label style={{ display: 'block', fontSize: '0.65rem', color: '#555', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}>Nicho</label>
               <select value={selNiche} onChange={e => setSelNiche(e.target.value)} style={selectStyle}>
-                {(niches.length ? niches : ['oficinas']).map(n => (
+                {(niches.length ? niches : ['odontologia-implantes']).map(n => (
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>

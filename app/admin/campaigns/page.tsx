@@ -245,7 +245,7 @@ export default function CampaignsPage() {
               </div>
               <div>
                 <FieldLabel required>Slug (identificador)</FieldLabel>
-                <Input value={form.slug} onChange={v => setField('slug', v)} placeholder="ex: moveis-beta-pack" />
+                <Input value={form.slug} onChange={v => setField('slug', v)} placeholder="ex: dental-pack" />
                 <span style={{ fontSize: '0.67rem', color: '#444', marginTop: '0.2rem', display: 'block' }}>
                   Letras minúsculas, números e hífens.
                 </span>
@@ -256,7 +256,7 @@ export default function CampaignsPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem' }}>
               <div>
                 <FieldLabel required>Nicho</FieldLabel>
-                <Input value={form.niche} onChange={v => setField('niche', v)} placeholder="moveis-planejados" />
+                <Input value={form.niche} onChange={v => setField('niche', v)} placeholder="odontologia-implantes" />
               </div>
               <div>
                 <FieldLabel>Cap (clientes)</FieldLabel>
@@ -478,10 +478,10 @@ export default function CampaignsPage() {
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             {[
-              ['Atribuir prospectos a uma campanha',          'python slug_gen.py --niche moveis-planejados --campaign moveis-beta-pack'],
-              ['Enviar fase 1',                               'python outreach_runner.py --niche moveis-planejados --phase 1'],
-              ['Enviar usando número específico',             'python outreach_runner.py --niche moveis-planejados --number number_1'],
-              ['Follow-ups (todas as campanhas do nicho)',    'python outreach_runner.py --niche moveis-planejados --phase 2'],
+              ['Atribuir prospectos a uma campanha',          'python slug_gen.py --niche odontologia-implantes --campaign dental-pack'],
+              ['Enviar fase 1',                               'python outreach_runner.py --niche odontologia-implantes --phase 1'],
+              ['Enviar usando número específico',             'python outreach_runner.py --niche odontologia-implantes --number number_1'],
+              ['Follow-ups (todas as campanhas do nicho)',    'python outreach_runner.py --niche odontologia-implantes --phase 2'],
             ].map(([label, cmd]) => (
               <div key={cmd} style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
                 <span style={{ fontSize: '0.68rem', color: '#444' }}>{label}</span>
