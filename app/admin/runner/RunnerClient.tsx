@@ -22,6 +22,57 @@ const STATUS_COLOR: Record<string, string> = {
   starting: '#c5a368', running: '#4caf7d',
   done: '#4caf7d', error: '#e05c5c', killed: '#e08c2c',
 };
+// ---------------------------------------------------------------------------
+// Brazil: states + major cities for dental prospecting
+// ---------------------------------------------------------------------------
+const BR_STATES: { uf: string; name: string; cities: string[] }[] = [
+  { uf: 'AC', name: 'Acre',                cities: ['Rio Branco','Cruzeiro do Sul'] },
+  { uf: 'AL', name: 'Alagoas',             cities: ['Maceió','Arapiraca'] },
+  { uf: 'AM', name: 'Amazonas',            cities: ['Manaus','Parintins','Itacoatiara','Manacapuru'] },
+  { uf: 'AP', name: 'Amapá',               cities: ['Macapá','Santana'] },
+  { uf: 'BA', name: 'Bahia',               cities: ['Salvador','Feira de Santana','Vitória da Conquista','Camaçari','Juazeiro','Ilhéus','Lauro de Freitas'] },
+  { uf: 'CE', name: 'Ceará',               cities: ['Fortaleza','Caucaia','Juazeiro do Norte','Maracanaú','Sobral','Crato'] },
+  { uf: 'DF', name: 'Distrito Federal',    cities: ['Brasília','Taguatinga','Ceilândia','Samambaia','Gama'] },
+  { uf: 'ES', name: 'Espírito Santo',      cities: ['Vitória','Serra','Vila Velha','Cariacica','Cachoeiro de Itapemirim'] },
+  { uf: 'GO', name: 'Goiás',               cities: ['Goiânia','Aparecida de Goiânia','Anápolis','Rio Verde','Luziânia'] },
+  { uf: 'MA', name: 'Maranhão',            cities: ['São Luís','Imperatriz','São José de Ribamar','Timon','Caxias'] },
+  { uf: 'MG', name: 'Minas Gerais',        cities: ['Belo Horizonte','Uberlândia','Contagem','Juiz de Fora','Betim','Montes Claros','Ribeirão das Neves','Uberaba','Governador Valadares','Ipatinga'] },
+  { uf: 'MS', name: 'Mato Grosso do Sul',  cities: ['Campo Grande','Dourados','Três Lagoas','Corumbá','Ponta Porã'] },
+  { uf: 'MT', name: 'Mato Grosso',         cities: ['Cuiabá','Várzea Grande','Rondonópolis','Sinop','Tangará da Serra'] },
+  { uf: 'PA', name: 'Pará',                cities: ['Belém','Ananindeua','Santarém','Marabá','Castanhal','Parauapebas'] },
+  { uf: 'PB', name: 'Paraíba',             cities: ['João Pessoa','Campina Grande','Santa Rita','Patos'] },
+  { uf: 'PE', name: 'Pernambuco',          cities: ['Recife','Caruaru','Olinda','Jaboatão dos Guararapes','Petrolina','Paulista','Camarajibe'] },
+  { uf: 'PI', name: 'Piauí',               cities: ['Teresina','Parnaíba','Picos','Floriano'] },
+  { uf: 'PR', name: 'Paraná',              cities: ['Curitiba','Londrina','Maringá','Foz do Iguaçu','Cascavel','Ponta Grossa','São José dos Pinhais','Colombo'] },
+  { uf: 'RJ', name: 'Rio de Janeiro',      cities: ['Rio de Janeiro','São Gonçalo','Duque de Caxias','Nova Iguaçu','Belford Roxo','Niterói','Campos dos Goytacazes','Petrópolis'] },
+  { uf: 'RN', name: 'Rio Grande do Norte', cities: ['Natal','Mossoró','Parnamirim','São Gonçalo do Amarante','Caicó'] },
+  { uf: 'RO', name: 'Rondônia',            cities: ['Porto Velho','Ji-Paraná','Ariquemes','Vilhena'] },
+  { uf: 'RR', name: 'Roraima',             cities: ['Boa Vista','Rorainópolis'] },
+  { uf: 'RS', name: 'Rio Grande do Sul',   cities: ['Porto Alegre','Caxias do Sul','Pelotas','Santa Maria','Canoas','Novo Hamburgo','Passo Fundo','Gravataí'] },
+  { uf: 'SC', name: 'Santa Catarina',      cities: ['Florianópolis','Joinville','Blumenau','São José','Criciúma','Chapecó','Itajaí','Lages'] },
+  { uf: 'SE', name: 'Sergipe',             cities: ['Aracaju','Nossa Senhora do Socorro','Lagarto','Itabaiana'] },
+  { uf: 'SP', name: 'São Paulo',           cities: ['São Paulo','Guarulhos','Campinas','São Bernardo do Campo','Santo André','Osasco','Ribeirão Preto','Sorocaba','Santos','Mogi das Cruzes','São José dos Campos','Mauá','Carapicuíba','Diadema','Jundiaí','Piracicaba','Bauru','São Vicente','Franca','Limeira'] },
+  { uf: 'TO', name: 'Tocantins',           cities: ['Palmas','Araguaína','Gurupi','Porto Nacional'] },
+];
+
+const DENTAL_TERMS = [
+  'clínica odontológica',
+  'dentista',
+  'implante dentário',
+  'facetas dentárias',
+  'lente de contato dental',
+  'clareamento dental',
+  'ortodontia',
+  'aparelho dentário',
+  'prótese dentária',
+  'cirurgião dentista',
+  'odontologia estética',
+  'implante dental',
+  'clínica de implantes',
+  'dentista implante',
+];
+
+
 
 type SenderFlag = { enabled: boolean; updated_at: string | null };
 
@@ -50,6 +101,7 @@ export default function RunnerClient() {
   const [cityInput,   setCityInput]   = useState('');
   const [termInput,   setTermInput]   = useState('');
   const [maxPerQuery, setMaxPerQuery] = useState<string>('');
+  const [selState,    setSelState]    = useState('');
 
   // Active job log
   const [activeJob,  setActiveJob]  = useState<string | null>(null);
